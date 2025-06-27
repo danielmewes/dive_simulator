@@ -15,5 +15,8 @@ export {
 // Export VPM-B implementation
 export { VpmBModel } from './models/VpmBModel';
 
+// Export BVM(3) implementation
+export { BvmModel } from './models/BvmModel';
+
 // Export example/demo function
 export { runVpmBDemo } from './examples/vpmb-demo';
