@@ -1,0 +1,362 @@
+/**
+ * VVal-18 Thalmann Decompression Algorithm Implementation
+ * 
+ * Implementation of the VVal-18 (VVAL 18) Thalmann decompression model,
+ * which uses a linear-exponential approach with three tissue compartments.
+ * Originally designed in 1980 for the US Navy Mk15 rebreather.
+ * 
+ * Key Features:
+ * - Three tissue compartments (fast, intermediate, slow)
+ * - Exponential gas uptake
+ * - Linear-exponential gas washout with crossover pressure
+ * - Used as basis for US Navy diving tables
+ * 
+ * Based on the work of:
+ * - Capt. Edward D. Thalmann, MD, USN (1980)
+ * - Naval Medical Research Institute Linear Exponential (NMRI LE1 PDA) data set
+ */
+
+import { 
+  DecompressionModel, 
+  TissueCompartment, 
+  DecompressionStop, 
+  GasMix 
+} from './DecompressionModel';
+
+interface VVal18Compartment extends TissueCompartment {
+  /** Crossover pressure for linear kinetics in bar */
+  crossoverPressure: number;
+  /** M-value (gradient factor) for this compartment */
+  mValue: number;
+  /** Linear slope factor for washout phase */
+  linearSlope: number;
+}
+
+interface VVal18Parameters {
+  /** Maximum DCS risk percentage (default 3.5%) */
+  maxDcsRisk: number;
+  /** Safety factor multiplier */
+  safetyFactor: number;
+  /** Gradient factor low (depth) */
+  gradientFactorLow: number;
+  /** Gradient factor high (surface) */
+  gradientFactorHigh: number;
+}
+
+/**
+ * VVal-18 Thalmann Decompression Model Implementation
+ */
+export class VVal18ThalmannModel extends DecompressionModel {
+  private vval18Compartments: VVal18Compartment[] = [];
+  private parameters: VVal18Parameters;
+
+  // VVal-18 three compartment half-times (minutes)
+  // Based on NMRI LE1 PDA data set
+  private readonly COMPARTMENT_HALF_TIMES = [
+    1.5,   // Fast compartment
+    51.0,  // Intermediate compartment (uses linear kinetics)
+    488.0  // Slow compartment
+  ];
+
+  // Helium half-times (faster diffusion, ~2.65x faster than nitrogen)
+  private readonly HELIUM_HALF_TIMES = [
+    0.57,  // Fast compartment for helium
+    19.2,  // Intermediate compartment for helium
+    184.2  // Slow compartment for helium
+  ];
+
+  // M-values for each compartment (pressure gradients in bar)
+  private readonly M_VALUES = [
+    1.6,   // Fast compartment
+    1.0,   // Intermediate compartment
+    0.65   // Slow compartment
+  ];
+
+  // Crossover pressures for linear kinetics (bar above ambient)
+  private readonly CROSSOVER_PRESSURES = [
+    0.4,   // Fast compartment
+    0.2,   // Intermediate compartment (primary linear kinetics)
+    0.1    // Slow compartment
+  ];
+
+  // Linear slope factors for washout phase
+  private readonly LINEAR_SLOPES = [
+    0.5,   // Fast compartment
+    0.3,   // Intermediate compartment (primary linear kinetics)
+    0.7    // Slow compartment
+  ];
+
+  constructor(parameters?: Partial<VVal18Parameters>) {
+    super();
+    
+    this.parameters = {
+      maxDcsRisk: 3.5,          // 3.5% max DCS risk as per Navy testing
+      safetyFactor: 1.0,        // Safety factor (1.0 = no additional safety)
+      gradientFactorLow: 0.30,  // Conservative gradient factor at depth
+      gradientFactorHigh: 0.85, // Conservative gradient factor at surface
+      ...parameters
+    };
+
+    // Re-initialize compartments now that all properties are set
+    this.initializeTissueCompartments();
+  }
+
+  protected initializeTissueCompartments(): void {
+    this.tissueCompartments = [];
+    this.vval18Compartments = [];
+
+    // Ensure arrays are properly defined
+    if (!this.COMPARTMENT_HALF_TIMES || !this.HELIUM_HALF_TIMES || 
+        !this.CROSSOVER_PRESSURES || !this.M_VALUES || !this.LINEAR_SLOPES) {
+      return; // Skip initialization if arrays are not ready
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const nitrogenHalfTime = this.COMPARTMENT_HALF_TIMES[i];
+      const heliumHalfTime = this.HELIUM_HALF_TIMES[i];
+      const crossoverPressure = this.CROSSOVER_PRESSURES[i];
+      const mValue = this.M_VALUES[i];
+      const linearSlope = this.LINEAR_SLOPES[i];
+      
+      if (nitrogenHalfTime === undefined || heliumHalfTime === undefined ||
+          crossoverPressure === undefined || mValue === undefined || linearSlope === undefined) {
+        continue; // Skip if values are undefined
+      }
+
+      const baseCompartment: TissueCompartment = {
+        number: i + 1,
+        nitrogenHalfTime: nitrogenHalfTime,
+        heliumHalfTime: heliumHalfTime,
+        nitrogenLoading: 0.79 * this.surfacePressure, // Surface equilibrium
+        heliumLoading: 0.0,
+        get totalLoading() {
+          return this.nitrogenLoading + this.heliumLoading;
+        }
+      };
+
+      const vval18Compartment: VVal18Compartment = {
+        ...baseCompartment,
+        crossoverPressure: crossoverPressure,
+        mValue: mValue,
+        linearSlope: linearSlope
+      };
+
+      this.tissueCompartments.push(baseCompartment);
+      this.vval18Compartments.push(vval18Compartment);
+    }
+  }
+
+  public updateTissueLoadings(timeStep: number): void {
+    const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
+    const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
+
+    for (let i = 0; i < this.tissueCompartments.length; i++) {
+      const compartment = this.tissueCompartments[i]!;
+      const vval18Compartment = this.vval18Compartments[i]!;
+
+      // Update nitrogen loading using linear-exponential model
+      compartment.nitrogenLoading = this.calculateLinearExponentialLoading(
+        compartment.nitrogenLoading,
+        nitrogenPP,
+        compartment.nitrogenHalfTime,
+        vval18Compartment.crossoverPressure,
+        vval18Compartment.linearSlope,
+        timeStep
+      );
+
+      // Update helium loading using linear-exponential model
+      compartment.heliumLoading = this.calculateLinearExponentialLoading(
+        compartment.heliumLoading,
+        heliumPP,
+        compartment.heliumHalfTime,
+        vval18Compartment.crossoverPressure,
+        vval18Compartment.linearSlope,
+        timeStep
+      );
+    }
+  }
+
+  public calculateCeiling(): number {
+    let maxCeiling = 0;
+
+    for (const vval18Compartment of this.vval18Compartments) {
+      const ceiling = this.calculateCompartmentCeiling(vval18Compartment);
+      maxCeiling = Math.max(maxCeiling, ceiling);
+    }
+
+    return Math.max(0, maxCeiling);
+  }
+
+  public calculateDecompressionStops(): DecompressionStop[] {
+    const stops: DecompressionStop[] = [];
+    const ceiling = this.calculateCeiling();
+
+    if (ceiling <= 0) {
+      return stops; // No decompression required
+    }
+
+    // Generate stops at 3m intervals starting from ceiling
+    let currentDepth = Math.ceil(ceiling / 3) * 3;
+    
+    while (currentDepth > 0) {
+      const stopTime = this.calculateStopTime(currentDepth);
+      
+      if (stopTime > 0) {
+        stops.push({
+          depth: currentDepth,
+          time: stopTime,
+          gasMix: this.currentDiveState.gasMix
+        });
+      }
+
+      currentDepth -= 3;
+    }
+
+    return stops;
+  }
+
+  public canAscendDirectly(): boolean {
+    return this.calculateCeiling() <= 0;
+  }
+
+  public getModelName(): string {
+    return `VVal-18 Thalmann (Risk: ${this.parameters.maxDcsRisk}%)`;
+  }
+
+  /**
+   * Calculate tissue loading using the VVal-18 linear-exponential model
+   * 
+   * @param initialLoading Initial tissue loading in bar
+   * @param partialPressure Partial pressure of inspired gas in bar
+   * @param halfTime Half-time in minutes
+   * @param crossoverPressure Crossover pressure for linear kinetics in bar
+   * @param linearSlope Linear slope factor for washout
+   * @param timeStep Time step in minutes
+   * @returns New tissue loading in bar
+   */
+  private calculateLinearExponentialLoading(
+    initialLoading: number,
+    partialPressure: number,
+    halfTime: number,
+    crossoverPressure: number,
+    linearSlope: number,
+    timeStep: number
+  ): number {
+    const ambientPressure = this.currentDiveState.ambientPressure;
+    const supersaturation = initialLoading - ambientPressure;
+
+    // Gas uptake: always exponential (Haldane model)
+    if (partialPressure >= initialLoading) {
+      return this.calculateHaldaneLoading(initialLoading, partialPressure, halfTime, timeStep);
+    }
+
+    // Gas washout: linear-exponential model
+    // If supersaturation exceeds crossover pressure, use linear kinetics
+    if (supersaturation > crossoverPressure) {
+      // Linear washout phase
+      const linearRate = linearSlope * (supersaturation - crossoverPressure) / halfTime;
+      const newLoading = initialLoading - (linearRate * timeStep);
+      
+      // Ensure we don't go below the crossover point
+      const crossoverLoading = ambientPressure + crossoverPressure;
+      return Math.max(newLoading, crossoverLoading);
+    } else {
+      // Exponential washout phase (standard Haldane)
+      return this.calculateHaldaneLoading(initialLoading, partialPressure, halfTime, timeStep);
+    }
+  }
+
+  /**
+   * Calculate the decompression ceiling for a specific compartment
+   */
+  private calculateCompartmentCeiling(compartment: VVal18Compartment): number {
+    const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+    
+    // Apply gradient factors for conservative decompression
+    const gradientFactor = this.interpolateGradientFactor();
+    const allowableGradient = compartment.mValue * gradientFactor * this.parameters.safetyFactor;
+    
+    // Calculate ceiling pressure
+    const ceilingPressure = totalLoading - allowableGradient;
+    const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+
+    return Math.max(0, ceilingDepth);
+  }
+
+  /**
+   * Interpolate gradient factor based on current depth
+   */
+  private interpolateGradientFactor(): number {
+    const currentDepth = this.currentDiveState.depth;
+    
+    // For simplicity, use gradient factor high (surface value)
+    // In a full implementation, this would interpolate between GF Low and GF High
+    // based on the current depth relative to the first decompression stop
+    return this.parameters.gradientFactorHigh;
+  }
+
+  /**
+   * Calculate required stop time at a given depth
+   */
+  private calculateStopTime(depth: number): number {
+    // Simplified stop time calculation
+    // In practice, this would involve iterative calculation to determine
+    // the time needed for controlling compartments to off-gas sufficiently
+    
+    const ceiling = this.calculateCeiling();
+    if (depth <= ceiling) {
+      return 0; // No stop needed at this depth
+    }
+
+    // Basic stop time estimation based on VVal-18 characteristics
+    // The intermediate compartment (51 min) typically controls decompression
+    const controllingCompartment = this.vval18Compartments[1]!; // Intermediate compartment
+    const supersaturation = controllingCompartment.totalLoading - this.calculateAmbientPressure(depth);
+    
+    // Estimate time based on linear washout rate if in linear phase
+    if (supersaturation > controllingCompartment.crossoverPressure) {
+      const linearRate = controllingCompartment.linearSlope * 
+                        (supersaturation - controllingCompartment.crossoverPressure) / 
+                        controllingCompartment.nitrogenHalfTime;
+      return Math.max(1, Math.min(30, supersaturation / linearRate));
+    }
+
+    // Exponential phase - basic estimation
+    return Math.max(1, Math.min(15, supersaturation * 10));
+  }
+
+  /**
+   * Get VVal-18 specific compartment data
+   */
+  public getVVal18CompartmentData(compartmentNumber: number): VVal18Compartment {
+    if (compartmentNumber < 1 || compartmentNumber > 3) {
+      throw new Error('VVal-18 has only 3 compartments (1-3)');
+    }
+    
+    return { ...this.vval18Compartments[compartmentNumber - 1]! };
+  }
+
+  /**
+   * Get all VVal-18 compartment data
+   */
+  public getAllVVal18Compartments(): VVal18Compartment[] {
+    return this.vval18Compartments.map(comp => ({ ...comp }));
+  }
+
+  /**
+   * Get current algorithm parameters
+   */
+  public getParameters(): VVal18Parameters {
+    return { ...this.parameters };
+  }
+
+  /**
+   * Update algorithm parameters
+   */
+  public updateParameters(newParameters: Partial<VVal18Parameters>): void {
+    this.parameters = {
+      ...this.parameters,
+      ...newParameters
+    };
+  }
+}

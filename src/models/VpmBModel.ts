@@ -73,28 +73,32 @@ export class VpmBModel extends DecompressionModel {
       criticalVolumeLambda: 750.0,
       regenerationTimeConstant: 20160.0 // 14 days in minutes
     };
+
+    // Re-initialize compartments now that all properties are set
+    this.initializeTissueCompartments();
   }
 
   protected initializeTissueCompartments(): void {
     this.tissueCompartments = [];
     this.vpmBCompartments = [];
 
-    // Use hardcoded arrays to avoid initialization issues
-    const nitrogenTimes = [
-      5.0, 8.0, 12.5, 18.5, 27.0, 38.3, 54.3, 77.0,
-      109.0, 146.0, 187.0, 239.0, 305.0, 390.0, 498.0, 635.0
-    ];
-    
-    const heliumTimes = [
-      1.88, 3.02, 4.72, 6.99, 10.21, 14.48, 20.53, 29.11,
-      41.20, 55.19, 70.69, 90.34, 115.29, 147.42, 188.24, 240.03
-    ];
+    // Ensure arrays are properly defined
+    if (!this.NITROGEN_HALF_TIMES || !this.HELIUM_HALF_TIMES) {
+      return; // Skip initialization if arrays are not ready
+    }
 
     for (let i = 0; i < 16; i++) {
+      const nitrogenHalfTime = this.NITROGEN_HALF_TIMES[i];
+      const heliumHalfTime = this.HELIUM_HALF_TIMES[i];
+      
+      if (nitrogenHalfTime === undefined || heliumHalfTime === undefined) {
+        continue; // Skip if values are undefined
+      }
+
       const vpmBCompartment: VpmBCompartment = {
         number: i + 1,
-        nitrogenHalfTime: nitrogenTimes[i]!,
-        heliumHalfTime: heliumTimes[i]!,
+        nitrogenHalfTime: nitrogenHalfTime,
+        heliumHalfTime: heliumHalfTime,
         nitrogenLoading: 0.79 * this.surfacePressure, // Surface equilibrium
         heliumLoading: 0.0,
         initialCriticalRadius: this.calculateInitialCriticalRadius(i + 1),

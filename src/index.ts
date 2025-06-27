@@ -18,6 +18,10 @@ export { VpmBModel } from './models/VpmBModel';
 // Export Buhlmann implementation
 export { BuhlmannModel } from './models/BuhlmannModel';
 
+// Export VVal-18 Thalmann implementation
+export { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
+
 // Export example/demo functions
 export { runVpmBDemo } from './examples/vpmb-demo';
 export { runBuhlmannDemo } from './examples/buhlmann-demo';
+export { runVVal18Demo } from './examples/vval18-demo';
