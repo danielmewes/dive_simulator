@@ -243,6 +243,9 @@ export class VpmBModel extends DecompressionModel {
       currentPressure
     );
 
+    // Ensure critical radius is never zero to prevent division by zero
+    compartment.adjustedCriticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001);
+
     // Calculate onset of impermeability
     compartment.onsetOfImpermeability = currentPressure + 
       (2.0 * this.bubbleParameters.surfaceTension) / compartment.adjustedCriticalRadius;
@@ -258,10 +261,16 @@ export class VpmBModel extends DecompressionModel {
       );
     } else {
       // Undersaturation: bubbles shrink back toward initial size
-      const shrinkageRate = timeStep / this.bubbleParameters.regenerationTimeConstant;
+      const shrinkageRate = Math.min(0.99, timeStep / this.bubbleParameters.regenerationTimeConstant); // Limit shrinkage rate
       compartment.adjustedCriticalRadius = compartment.adjustedCriticalRadius * (1.0 - shrinkageRate) +
         compartment.initialCriticalRadius * shrinkageRate;
     }
+
+    // Ensure critical radius stays within reasonable bounds
+    compartment.adjustedCriticalRadius = Math.max(
+      Math.min(compartment.adjustedCriticalRadius, compartment.initialCriticalRadius * 10.0),
+      compartment.initialCriticalRadius * 0.1
+    );
   }
 
   private calculateCompartmentCeiling(compartment: VpmBCompartment): number {
@@ -280,7 +289,7 @@ export class VpmBModel extends DecompressionModel {
   private calculateAllowableSupersaturation(compartment: VpmBCompartment): number {
     // VPM-B allowable supersaturation based on bubble mechanics
     const surfaceTension = this.bubbleParameters.surfaceTension;
-    const criticalRadius = compartment.adjustedCriticalRadius;
+    const criticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001); // Prevent division by zero
     
     // Basic VPM-B supersaturation limit
     const bubblePressure = (2.0 * surfaceTension) / criticalRadius;
@@ -294,10 +303,11 @@ export class VpmBModel extends DecompressionModel {
   private calculateBubbleRadius(excessPressure: number, criticalRadius: number): number {
     // Calculate bubble radius under pressure using VPM-B model
     const surfaceTension = this.bubbleParameters.surfaceTension;
+    const safeCriticalRadius = Math.max(criticalRadius, 0.001); // Prevent division by zero
     
     // Simplified bubble radius calculation
-    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / criticalRadius);
-    return criticalRadius * Math.pow(pressureRatio, 1.0 / 3.0);
+    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / safeCriticalRadius);
+    return safeCriticalRadius * Math.pow(Math.max(pressureRatio, 0.001), 1.0 / 3.0);
   }
 
   private calculateStopTime(depth: number): number {
