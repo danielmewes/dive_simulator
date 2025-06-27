@@ -74,13 +74,13 @@ describe('VpmBModel', () => {
       });
 
       const initialCompartments = vpmModel.getTissueCompartments();
-      const initialLoading = initialCompartments[0].nitrogenLoading;
+      const initialLoading = initialCompartments[0]?.nitrogenLoading!;
 
       // Update for 10 minutes
       vpmModel.updateTissueLoadings(10);
 
       const updatedCompartments = vpmModel.getTissueCompartments();
-      const newLoading = updatedCompartments[0].nitrogenLoading;
+      const newLoading = updatedCompartments[0]?.nitrogenLoading!;
 
       expect(newLoading).toBeGreaterThan(initialLoading);
     });

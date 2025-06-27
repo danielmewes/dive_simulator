@@ -54,7 +54,9 @@ function runVpmBDemo(): void {
   console.log('Tissue Loading (first 4 compartments):');
   for (let i = 0; i < 4; i++) {
     const comp = compartments[i];
-    console.log(`  Comp ${comp.number}: N2=${comp.nitrogenLoading.toFixed(3)} bar, Total=${comp.totalLoading.toFixed(3)} bar`);
+    if (comp) {
+      console.log(`  Comp ${comp.number}: N2=${comp.nitrogenLoading.toFixed(3)} bar, Total=${comp.totalLoading.toFixed(3)} bar`);
+    }
   }
   console.log();
 
