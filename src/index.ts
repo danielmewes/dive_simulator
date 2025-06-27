@@ -15,5 +15,9 @@ export {
 // Export VPM-B implementation
 export { VpmBModel } from './models/VpmBModel';
 
-// Export example/demo function
+// Export Buhlmann implementation
+export { BuhlmannModel } from './models/BuhlmannModel';
+
+// Export example/demo functions
 export { runVpmBDemo } from './examples/vpmb-demo';
+export { runBuhlmannDemo } from './examples/buhlmann-demo';

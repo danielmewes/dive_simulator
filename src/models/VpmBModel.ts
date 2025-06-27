@@ -79,30 +79,38 @@ export class VpmBModel extends DecompressionModel {
     this.tissueCompartments = [];
     this.vpmBCompartments = [];
 
+    // Use hardcoded arrays to avoid initialization issues
+    const nitrogenTimes = [
+      5.0, 8.0, 12.5, 18.5, 27.0, 38.3, 54.3, 77.0,
+      109.0, 146.0, 187.0, 239.0, 305.0, 390.0, 498.0, 635.0
+    ];
+    
+    const heliumTimes = [
+      1.88, 3.02, 4.72, 6.99, 10.21, 14.48, 20.53, 29.11,
+      41.20, 55.19, 70.69, 90.34, 115.29, 147.42, 188.24, 240.03
+    ];
+
     for (let i = 0; i < 16; i++) {
-      const baseCompartment: TissueCompartment = {
+      const vpmBCompartment: VpmBCompartment = {
         number: i + 1,
-        nitrogenHalfTime: this.NITROGEN_HALF_TIMES[i],
-        heliumHalfTime: this.HELIUM_HALF_TIMES[i],
+        nitrogenHalfTime: nitrogenTimes[i]!,
+        heliumHalfTime: heliumTimes[i]!,
         nitrogenLoading: 0.79 * this.surfacePressure, // Surface equilibrium
         heliumLoading: 0.0,
+        initialCriticalRadius: this.calculateInitialCriticalRadius(i + 1),
+        adjustedCriticalRadius: 0,
+        maxCrushingPressure: 0,
+        onsetOfImpermeability: 0,
         get totalLoading() {
           return this.nitrogenLoading + this.heliumLoading;
         }
       };
 
-      const vpmBCompartment: VpmBCompartment = {
-        ...baseCompartment,
-        initialCriticalRadius: this.calculateInitialCriticalRadius(i + 1),
-        adjustedCriticalRadius: 0,
-        maxCrushingPressure: 0,
-        onsetOfImpermeability: 0
-      };
-
       // Set initial adjusted critical radius
       vpmBCompartment.adjustedCriticalRadius = vpmBCompartment.initialCriticalRadius;
 
-      this.tissueCompartments.push(baseCompartment);
+      // Use the same object for both arrays to maintain sync
+      this.tissueCompartments.push(vpmBCompartment);
       this.vpmBCompartments.push(vpmBCompartment);
     }
   }
@@ -112,8 +120,8 @@ export class VpmBModel extends DecompressionModel {
     const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
 
     for (let i = 0; i < this.tissueCompartments.length; i++) {
-      const compartment = this.tissueCompartments[i];
-      const vpmBCompartment = this.vpmBCompartments[i];
+      const compartment = this.tissueCompartments[i]!;
+      const vpmBCompartment = this.vpmBCompartments[i]!;
 
       // Update nitrogen loading
       compartment.nitrogenLoading = this.calculateHaldaneLoading(
@@ -192,7 +200,7 @@ export class VpmBModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
 
-    const vpmBCompartment = this.vpmBCompartments[compartmentNumber - 1];
+    const vpmBCompartment = this.vpmBCompartments[compartmentNumber - 1]!;
     const totalLoading = vpmBCompartment.nitrogenLoading + vpmBCompartment.heliumLoading;
     
     // Calculate bubble volume using critical volume hypothesis
@@ -221,7 +229,11 @@ export class VpmBModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
     
-    return { ...this.vpmBCompartments[compartmentNumber - 1] };
+    const compartment = this.vpmBCompartments[compartmentNumber - 1];
+    if (!compartment) {
+      throw new Error('Compartment not found');
+    }
+    return { ...compartment };
   }
 
   private calculateInitialCriticalRadius(compartmentNumber: number): number {
@@ -231,7 +243,7 @@ export class VpmBModel extends DecompressionModel {
       0.4187, 0.3798, 0.3497, 0.3223, 0.2971, 0.2737, 0.2523, 0.2327
     ];
     
-    return initialRadii[compartmentNumber - 1] * 1000; // Convert to nm
+    return initialRadii[compartmentNumber - 1]! * 1000; // Convert to nm
   }
 
   private updateBubbleDynamics(compartment: VpmBCompartment, timeStep: number): void {
