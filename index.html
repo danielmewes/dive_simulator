@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dive Decompression Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤿 Dive Decompression Simulator</h1>
+            <p class="warning">⚠️ For educational purposes only - Not for actual dive planning</p>
+        </header>
+
+        <div class="main-layout">
+            <!-- Control Panel -->
+            <aside class="control-panel">
+                <div class="control-section">
+                    <h3>🎮 Dive Controls</h3>
+                    
+                    <!-- Depth Control -->
+                    <div class="control-group">
+                        <label for="depth-slider">Current Depth: <span id="depth-display">0</span>m</label>
+                        <input type="range" id="depth-slider" min="0" max="60" value="0" step="1">
+                        <div class="depth-buttons">
+                            <button id="descend-fast">⬇️ Fast Descent</button>
+                            <button id="ascend-slow">⬆️ Slow Ascent</button>
+                        </div>
+                    </div>
+
+                    <!-- Time Control -->
+                    <div class="control-group">
+                        <label>Dive Time: <span id="time-display">0:00</span></label>
+                        <div class="time-controls">
+                            <button id="time-1x" class="time-speed active">1x</button>
+                            <button id="time-5x" class="time-speed">5x</button>
+                            <button id="time-10x" class="time-speed">10x</button>
+                            <button id="time-60x" class="time-speed">60x</button>
+                        </div>
+                        <button id="pause-play" class="pause-play">⏸️ Pause</button>
+                    </div>
+
+                    <!-- Gas Mix Control -->
+                    <div class="control-group">
+                        <h4>🫁 Gas Mixture</h4>
+                        <div class="gas-controls">
+                            <div class="gas-input">
+                                <label for="oxygen">O₂ %:</label>
+                                <input type="number" id="oxygen" min="16" max="100" value="21" step="1">
+                            </div>
+                            <div class="gas-input">
+                                <label for="helium">He %:</label>
+                                <input type="number" id="helium" min="0" max="80" value="0" step="1">
+                            </div>
+                            <div class="gas-input">
+                                <label for="nitrogen">N₂ %:</label>
+                                <input type="number" id="nitrogen" value="79" readonly>
+                            </div>
+                        </div>
+                        <button id="switch-gas">🔄 Switch Gas</button>
+                        
+                        <!-- Preset Gas Mixes -->
+                        <div class="gas-presets">
+                            <button class="gas-preset" data-o2="21" data-he="0">Air</button>
+                            <button class="gas-preset" data-o2="32" data-he="0">EAN32</button>
+                            <button class="gas-preset" data-o2="18" data-he="45">Trimix 18/45</button>
+                            <button class="gas-preset" data-o2="21" data-he="35">Trimix 21/35</button>
+                        </div>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="control-group">
+                        <h4>🧮 Decompression Models</h4>
+                        <div class="model-selection">
+                            <label><input type="checkbox" id="model-buhlmann" checked> Bühlmann ZH-L16C</label>
+                            <label><input type="checkbox" id="model-vpmb" checked> VPM-B</label>
+                            <label><input type="checkbox" id="model-bvm" checked> BVM(3)</label>
+                            <label><input type="checkbox" id="model-vval18" checked> VVal-18 Thalmann</label>
+                        </div>
+                    </div>
+
+                    <!-- Reset Controls -->
+                    <div class="control-group">
+                        <button id="reset-dive" class="reset-button">🔄 Reset Dive</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Visualization Area -->
+            <main class="visualization-area">
+                <!-- Current Status -->
+                <section class="status-panel">
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <h4>Current Depth</h4>
+                            <div class="status-value" id="current-depth">0 m</div>
+                        </div>
+                        <div class="status-item">
+                            <h4>Dive Time</h4>
+                            <div class="status-value" id="current-time">0:00</div>
+                        </div>
+                        <div class="status-item">
+                            <h4>Current Gas</h4>
+                            <div class="status-value" id="current-gas">Air (21/0)</div>
+                        </div>
+                        <div class="status-item">
+                            <h4>Ambient Pressure</h4>
+                            <div class="status-value" id="ambient-pressure">1.0 bar</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Decompression Information -->
+                <section class="deco-info">
+                    <h3>📊 Decompression Status</h3>
+                    <div class="model-results">
+                        <div class="model-result" id="buhlmann-result">
+                            <h4>Bühlmann ZH-L16C</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="buhlmann-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="buhlmann-tts">0 min</strong></span>
+                                <span class="status" id="buhlmann-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                        <div class="model-result" id="vpmb-result">
+                            <h4>VPM-B</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="vpmb-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="vpmb-tts">0 min</strong></span>
+                                <span class="status" id="vpmb-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                        <div class="model-result" id="bvm-result">
+                            <h4>BVM(3)</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="bvm-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="bvm-tts">0 min</strong></span>
+                                <span class="status" id="bvm-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                        <div class="model-result" id="vval18-result">
+                            <h4>VVal-18 Thalmann</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="vval18-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="vval18-tts">0 min</strong></span>
+                                <span class="status" id="vval18-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tissue Loading Charts -->
+                <section class="charts-section">
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-chart="tissue-loading">🧠 Tissue Loading</button>
+                        <button class="chart-tab" data-chart="dive-profile">📈 Dive Profile</button>
+                        <button class="chart-tab" data-chart="dcs-risk">⚠️ DCS Risk</button>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="tissue-loading-chart" class="chart active"></canvas>
+                        <canvas id="dive-profile-chart" class="chart"></canvas>
+                        <canvas id="dcs-risk-chart" class="chart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Decompression Schedule -->
+                <section class="deco-schedule">
+                    <h3>📋 Decompression Schedule</h3>
+                    <div class="schedule-container">
+                        <div class="schedule-column">
+                            <h4>Bühlmann</h4>
+                            <div id="buhlmann-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4>VPM-B</h4>
+                            <div id="vpmb-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4>BVM(3)</h4>
+                            <div id="bvm-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4>VVal-18</h4>
+                            <div id="vval18-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Load the decompression models and simulation engine -->
+    <script src="dist/bundle.js"></script>
+    <script src="simulation.js"></script>
+</body>
+</html>
