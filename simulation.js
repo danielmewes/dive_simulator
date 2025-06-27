@@ -462,7 +462,7 @@ class DiveSimulator {
             historyPoint.models[name] = {
                 ceiling: model.calculateCeiling(),
                 tissueLoadings: model.getTissueCompartments().map(t => 
-                    t.nitrogenPressure + (t.heliumPressure || 0)
+                    t.nitrogenLoading + (t.heliumLoading || 0)
                 ),
                 canAscend: model.canAscendDirectly()
             };
@@ -586,7 +586,7 @@ class DiveSimulator {
         let totalSupersaturation = 0;
         
         compartments.forEach(compartment => {
-            const totalInert = compartment.nitrogenPressure + (compartment.heliumPressure || 0);
+            const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
             const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
             const supersaturation = Math.max(0, totalInert - ambientPressure);
             totalSupersaturation += supersaturation;
