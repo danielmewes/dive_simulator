@@ -9,7 +9,7 @@
     "test:watch": "jest --watch",
     "dev": "tsc --watch",
     "lint": "eslint src/**/*.ts",
-    "start": "node dist/index.js",
+    "start": "node dist/test-basic.js",
     "demo": "npx ts-node src/run-demo.ts",
     "test:basic": "npx ts-node src/test-basic.ts"
   },
