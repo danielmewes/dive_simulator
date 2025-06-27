@@ -10,7 +10,7 @@ This project provides comprehensive implementations of established decompression
 
 - **Multiple Decompression Models**: Four fully implemented algorithms ready for comparison
 - **Comprehensive Gas Support**: Air, nitrox, and trimix gas mixtures with dynamic switching
-- **Tissue Compartment Modeling**: 16-compartment models with nitrogen and helium tracking
+- **Tissue Compartment Modeling**: Multi-compartment models with nitrogen and helium tracking
 - **Real-time Calculations**: Decompression ceilings, stop requirements, and tissue saturation
 - **Educational Focus**: Detailed model implementations for learning decompression theory
 - **TypeScript**: Full type safety and modern JavaScript features
@@ -36,8 +36,8 @@ This project provides comprehensive implementations of established decompression
 
 ### ✅ VVal-18 (Thalmann Algorithm)
 - U.S. Navy decompression algorithm implementation
-- 18-compartment tissue model
-- Exponential and linear gas kinetics
+- 3-compartment tissue model (fast, intermediate, slow)
+- Conservative DCS risk assessment with configurable parameters
 
 ## Technology Stack
 
@@ -69,13 +69,19 @@ npm run test:basic  # Basic functionality verification
 ### Example Usage
 
 ```typescript
-import { VpmBModel, BuhlmannModel } from './src/models';
+import { VpmBModel, BuhlmannModel, VVal18ThalmannModel } from './src/models';
 
 // Create VPM-B model with moderate conservatism
 const vpmModel = new VpmBModel(3);
 
 // Create Bühlmann model with gradient factors
-const buhlmannModel = new BuhlmannModel(0.3, 0.85);
+const buhlmannModel = new BuhlmannModel({ low: 30, high: 85 });
+
+// Create VVal-18 model with custom parameters
+const vval18Model = new VVal18ThalmannModel({ 
+  maxDcsRisk: 2.5,  // More conservative 2.5% risk
+  safetyFactor: 1.2 
+});
 
 // Define gas mix (32% nitrox)
 const nitrox32 = { 
@@ -92,10 +98,14 @@ vpmModel.updateTissueLoadings(25);
 const ceiling = vpmModel.calculateCeiling();
 const stops = vpmModel.calculateDecompressionStops();
 
-// Compare with Bühlmann model
+// Compare with other models
 buhlmannModel.updateDiveState({ depth: 30, time: 0, gasMix: nitrox32 });
 buhlmannModel.updateTissueLoadings(25);
 const buhlmannCeiling = buhlmannModel.calculateCeiling();
+
+vval18Model.updateDiveState({ depth: 30, time: 0, gasMix: nitrox32 });
+vval18Model.updateTissueLoadings(25);
+const vval18Ceiling = vval18Model.calculateCeiling();
 ```
 
 ## Project Structure
