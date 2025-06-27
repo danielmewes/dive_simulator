@@ -1,8 +1,9 @@
 /**
- * VPM-B (Varying Permeability Model - Bubble) Decompression Algorithm
+ * VPM-B (Varying Permeability Model with Boyle Law Compensation) Decompression Algorithm
  * 
  * Implementation of the VPM-B decompression model, which is a dual-phase model
- * that accounts for both dissolved gas kinetics and bubble mechanics.
+ * that accounts for both dissolved gas kinetics and bubble mechanics with
+ * Boyle's Law expansion compensation.
  * 
  * Based on the work of:
  * - Yount, D.E., and Hoffman, D.C. (1986)

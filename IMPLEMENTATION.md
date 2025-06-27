@@ -1,6 +1,6 @@
 # VPM-B Decompression Model Implementation
 
-This document describes the implementation of the VPM-B (Varying Permeability Model - Bubble) decompression algorithm.
+This document describes the implementation of the VPM-B (Varying Permeability Model with Boyle Law Compensation) decompression algorithm.
 
 ## Architecture
 

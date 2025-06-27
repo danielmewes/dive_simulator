@@ -18,7 +18,7 @@ This project implements various decompression algorithms used in technical divin
 
 The simulator will implement popular decompression algorithms including:
 - Bühlmann ZH-L16 (with gradient factors)
-- VPM-B (Varying Permeability Model)
+- VPM-B (Varying Permeability Model with Boyle Law Compensation)
 - RGBM (Reduced Gradient Bubble Model)
 
 ## Technology Stack

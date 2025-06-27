@@ -1,8 +1,9 @@
 /**
  * VPM-B Model Demo
  * 
- * This example demonstrates how to use the VPM-B decompression model
- * to simulate a dive and calculate decompression requirements.
+ * This example demonstrates how to use the VPM-B (Varying Permeability Model
+ * with Boyle Law Compensation) decompression model to simulate a dive and
+ * calculate decompression requirements.
  */
 
 import { VpmBModel } from '../models/VpmBModel';
