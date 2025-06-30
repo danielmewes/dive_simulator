@@ -1551,6 +1551,9 @@ class DiveSimulator {
     }
     
     resetDive() {
+        // Remember if the simulation was running before reset
+        const wasRunning = this.isRunning;
+        
         this.pauseSimulation();
         this.currentDepth = 0;
         this.diveTime = 0;
@@ -1657,7 +1660,14 @@ class DiveSimulator {
             this.updateCharts();
         }, 100);
         
-        this.startSimulation();
+        // Only restart simulation if it was running before reset
+        if (wasRunning) {
+            this.startSimulation();
+        } else {
+            // Make sure the pause/play button shows the correct state
+            const pausePlayBtn = document.getElementById('pause-play');
+            pausePlayBtn.textContent = '▶️ Play';
+        }
     }
     
     updateSimulation() {
