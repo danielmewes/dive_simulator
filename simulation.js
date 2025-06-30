@@ -1488,6 +1488,15 @@ class DiveSimulator {
         
         const selectedModel = this.selectedDetailedModel;
         
+        // Check if the selected model is enabled
+        if (!this.enabledModels[selectedModel]) {
+            // Clear the chart if the selected model is disabled
+            this.detailedTissueChart.data.datasets = [];
+            this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - Model Disabled`;
+            this.detailedTissueChart.update('none');
+            return;
+        }
+        
         // Determine the number of compartments for the selected model
         let compartmentCount = 0;
         if (zoomedHistory.length > 0 && zoomedHistory[0].models[selectedModel]) {
