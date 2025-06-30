@@ -432,21 +432,87 @@ describe('BvmModel', () => {
       expect(diveRisk).toBeLessThanOrEqual(100); // Should be within percentage range
     });
 
-    test('should use literature-based calculation via calculateTotalDcsRisk', () => {
+    test('should use literature-based exponential probability calculation', () => {
       const bvmModel = new BvmModel(3);
       
-      // The BVM(3) model should use bubble volume-based calculation
-      // Verify that calculateDCSRisk returns the same pattern as calculateTotalDcsRisk
+      // The BVM(3) model should use exponential probability function from Gerth & Vann (1997)
       const directRisk = bvmModel.calculateTotalDcsRisk();
       const interfaceRisk = bvmModel.calculateDCSRisk();
       
-      // Both should be related (interface method scales total risk to percentage)
+      // Both should be valid probabilities/percentages
       expect(typeof interfaceRisk).toBe('number');
       expect(interfaceRisk).toBeGreaterThanOrEqual(0);
+      expect(directRisk).toBeGreaterThanOrEqual(0);
+      expect(directRisk).toBeLessThanOrEqual(1); // Total risk should be probability (0-1)
       
-      // Verify the relationship: interface risk should be total risk scaled to percentage
-      const expectedRisk = Math.min(100, directRisk * 100);
-      expect(Math.abs(interfaceRisk - Math.round(expectedRisk * 10) / 10)).toBeLessThan(0.1);
+      // Interface risk should include conservatism factor (15% per level)
+      const conservatismLevel = 3;
+      const expectedBaseRisk = directRisk * 100; // Convert to percentage
+      const conservatismMultiplier = 1.0 + (conservatismLevel * 0.15);
+      const expectedRiskWithConservatism = expectedBaseRisk * conservatismMultiplier;
+      
+      expect(Math.abs(interfaceRisk - Math.round(expectedRiskWithConservatism * 10) / 10)).toBeLessThan(0.1);
+    });
+
+    test('should implement exponential probability function for compartment risk', () => {
+      const bvmModel = new BvmModel(0); // No conservatism for cleaner testing
+      
+      // Create a dive scenario to generate some bubble volume
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+      
+      bvmModel.updateDiveState({ depth: 40, gasMix: airMix });
+      bvmModel.updateTissueLoadings(30); // 30 minutes at depth
+      bvmModel.updateDiveState({ depth: 0 }); // Rapid ascent
+      bvmModel.updateTissueLoadings(0.1); // Brief time for bubble formation
+      
+      // Check that compartment 1 (fast) has higher bubble volume than compartment 3 (slow)
+      const fastBubbleVolume = bvmModel.calculateBubbleVolume(1);
+      const slowBubbleVolume = bvmModel.calculateBubbleVolume(3);
+      
+      // Fast compartment should have more bubble formation
+      expect(fastBubbleVolume).toBeGreaterThanOrEqual(slowBubbleVolume);
+      
+      // Total risk should be calculated using independent probability combination
+      const totalRisk = bvmModel.calculateTotalDcsRisk();
+      expect(totalRisk).toBeGreaterThan(0);
+      expect(totalRisk).toBeLessThan(1); // Should be a probability
+    });
+
+    test('should show different risk levels across conservatism settings', () => {
+      const conservativeModel = new BvmModel(5);
+      const moderateModel = new BvmModel(3);
+      const liberalModel = new BvmModel(0);
+      
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+      
+      // Simulate the same dive for all models
+      [conservativeModel, moderateModel, liberalModel].forEach(model => {
+        model.updateDiveState({ depth: 35, gasMix: airMix });
+        model.updateTissueLoadings(25);
+        model.updateDiveState({ depth: 0 });
+        model.updateTissueLoadings(0.1);
+      });
+      
+      const conservativeRisk = conservativeModel.calculateDCSRisk();
+      const moderateRisk = moderateModel.calculateDCSRisk();
+      const liberalRisk = liberalModel.calculateDCSRisk();
+      
+      // Conservative should have highest risk, liberal should have lowest
+      expect(conservativeRisk).toBeGreaterThanOrEqual(moderateRisk);
+      expect(moderateRisk).toBeGreaterThanOrEqual(liberalRisk);
+      
+      // All should be reasonable percentages
+      expect(conservativeRisk).toBeLessThan(100);
+      expect(moderateRisk).toBeLessThan(100);
+      expect(liberalRisk).toBeGreaterThanOrEqual(0);
     });
   });
 });
