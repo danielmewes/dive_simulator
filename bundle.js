@@ -955,8 +955,8 @@
                 const offGassingTime = compartment.nitrogenHalfTime * 
                                      Math.log(totalLoading / targetPressure) / Math.log(2);
                 
-                // Bubble elimination component
-                const bubbleEliminationTime = compartment.bubbleVolumeFraction > 0.001 ? 
+                // Bubble elimination component - protect against division by zero
+                const bubbleEliminationTime = (compartment.bubbleVolumeFraction > 0.001 && compartment.bubbleEliminationRate > 0) ? 
                                              (1 / compartment.bubbleEliminationRate) * 
                                              Math.log(compartment.bubbleVolumeFraction / 0.001) : 0;
                 

@@ -161,7 +161,12 @@ export class TbdmModel extends DecompressionModel {
     // Default conservatism factor for initialization (if called from super() before tbdmParameters is set)
     const conservatismFactor = this.tbdmParameters?.conservatismFactor || 1.0;
 
-    for (let i = 0; i < 16; i++) {
+    // Ensure we don't exceed array bounds
+    const numCompartments = Math.min(16, nitrogenTimes.length, heliumTimes.length, 
+                                     bubbleNucleationThresholds.length, bubbleEliminationRates.length,
+                                     tissuePerfusionRates.length, bubbleFormationCoefficients.length);
+
+    for (let i = 0; i < numCompartments; i++) {
       const tbdmCompartment: TbdmCompartment = {
         number: i + 1,
         nitrogenHalfTime: nitrogenTimes[i]!,
@@ -411,8 +416,8 @@ export class TbdmModel extends DecompressionModel {
       const offGassingTime = compartment.nitrogenHalfTime * 
                            Math.log(totalLoading / targetPressure) / Math.log(2);
       
-      // Bubble elimination component
-      const bubbleEliminationTime = compartment.bubbleVolumeFraction > 0.001 ? 
+      // Bubble elimination component - protect against division by zero
+      const bubbleEliminationTime = (compartment.bubbleVolumeFraction > 0.001 && compartment.bubbleEliminationRate > 0) ? 
                                    (1 / compartment.bubbleEliminationRate) * 
                                    Math.log(compartment.bubbleVolumeFraction / 0.001) : 0;
       
