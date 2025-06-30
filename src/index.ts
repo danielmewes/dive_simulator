@@ -24,7 +24,18 @@ export { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
 // Export BVM(3) implementation
 export { BvmModel } from './models/BvmModel';
 
+// Export RGBM Folded implementation
+export { RgbmFoldedModel } from './models/RgbmFoldedModel';
+
+// Export TBDM implementation
+export { TbdmModel } from './models/TbdmModel';
+
+// Export NMRI98 Linear Exponential Model implementation
+export { Nmri98Model } from './models/Nmri98Model';
+
 // Export example/demo functions
 export { runVpmBDemo } from './examples/vpmb-demo';
 export { runBuhlmannDemo } from './examples/buhlmann-demo';
 export { runVVal18Demo } from './examples/vval18-demo';
+export { runTbdmDemo } from './examples/tbdm-demo';
+export { runNmri98Demo } from './examples/nmri98-demo';

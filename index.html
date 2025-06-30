@@ -78,6 +78,9 @@
                             <label><input type="checkbox" id="model-vpmb" checked> VPM-B</label>
                             <label><input type="checkbox" id="model-bvm" checked> BVM(3)</label>
                             <label><input type="checkbox" id="model-vval18" checked> VVal-18 Thalmann</label>
+                            <label><input type="checkbox" id="model-rgbm" checked> RGBM (folded)</label>
+                            <label><input type="checkbox" id="model-tbdm" checked> TBDM</label>
+                            <label><input type="checkbox" id="model-nmri98" checked> NMRI98 LEM</label>
                         </div>
                     </div>
 
@@ -92,6 +95,9 @@
                                     <option value="buhlmann">Bühlmann</option>
                                     <option value="bvm">BVM(3)</option>
                                     <option value="vval18">VVal-18</option>
+                                    <option value="rgbm">RGBM (folded)</option>
+                                    <option value="tbdm">TBDM</option>
+                                    <option value="nmri98">NMRI98 LEM</option>
                                 </select>
                             </div>
                             
@@ -170,6 +176,78 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- RGBM Settings -->
+                            <div id="rgbm-settings" class="model-settings-panel" style="display: none;">
+                                <div class="conservatism-control">
+                                    <label for="unified-rgbm-conservatism">Conservatism Level: <span id="unified-rgbm-conservatism-display">2</span></label>
+                                    <input type="range" id="unified-rgbm-conservatism" min="0" max="5" value="2" step="1">
+                                    <div class="conservatism-labels">
+                                        <span>0 (Aggressive)</span>
+                                        <span>5 (Conservative)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- TBDM Settings -->
+                            <div id="tbdm-settings" class="model-settings-panel" style="display: none;">
+                                <div class="conservatism-controls">
+                                    <div class="conservatism-control">
+                                        <label for="unified-tbdm-conservatism">Conservatism Factor: <span id="unified-tbdm-conservatism-display">1.0</span></label>
+                                        <input type="range" id="unified-tbdm-conservatism" min="0.5" max="2.0" value="1.0" step="0.1">
+                                        <div class="conservatism-labels">
+                                            <span>0.5 (Aggressive)</span>
+                                            <span>2.0 (Conservative)</span>
+                                        </div>
+                                    </div>
+                                    <div class="tbdm-parameters">
+                                        <div class="parameter-control">
+                                            <label for="unified-tbdm-body-temp">Body Temperature: <span id="unified-tbdm-body-temp-display">37.0</span>°C</label>
+                                            <input type="range" id="unified-tbdm-body-temp" min="35.0" max="39.0" value="37.0" step="0.1">
+                                        </div>
+                                        <div class="parameter-description">
+                                            <small>TBDM incorporates bubble nucleation thresholds and tissue-specific bubble dynamics. Higher conservatism factors reduce bubble formation tolerance.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- NMRI98 LEM Settings -->
+                            <div id="nmri98-settings" class="model-settings-panel" style="display: none;">
+                                <div class="conservatism-control">
+                                    <label for="unified-nmri98-conservatism">Conservatism Level: <span id="unified-nmri98-conservatism-display">3</span></label>
+                                    <input type="range" id="unified-nmri98-conservatism" min="0" max="5" value="3" step="1">
+                                    <div class="conservatism-labels">
+                                        <span>0 (Aggressive)</span>
+                                        <span>5 (Conservative)</span>
+                                    </div>
+                                </div>
+                                <div class="risk-control">
+                                    <label for="unified-nmri98-max-dcs-risk">Max DCS Risk: <span id="unified-nmri98-max-dcs-risk-display">2.0</span>%</label>
+                                    <input type="range" id="unified-nmri98-max-dcs-risk" min="0.1" max="10.0" value="2.0" step="0.1">
+                                    <div class="risk-labels">
+                                        <span>0.1% (Very Conservative)</span>
+                                        <span>10% (Aggressive)</span>
+                                    </div>
+                                </div>
+                                <div class="safety-control">
+                                    <label for="unified-nmri98-safety-factor">Safety Factor: <span id="unified-nmri98-safety-factor-display">1.2</span></label>
+                                    <input type="range" id="unified-nmri98-safety-factor" min="1.0" max="2.0" value="1.2" step="0.1">
+                                    <div class="safety-labels">
+                                        <span>1.0 (No Extra Safety)</span>
+                                        <span>2.0 (Maximum Safety)</span>
+                                    </div>
+                                </div>
+                                <div class="oxygen-control">
+                                    <label>
+                                        <input type="checkbox" id="unified-nmri98-oxygen-tracking" checked>
+                                        Enable Oxygen Tracking
+                                    </label>
+                                    <div class="oxygen-info">
+                                        <small>Tracks oxygen loading and adds O₂ toxicity to DCS risk calculation</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -240,6 +318,30 @@
                                 <span class="status" id="vval18-status">✅ No Deco</span>
                             </div>
                         </div>
+                        <div class="model-result" id="rgbm-result">
+                            <h4 id="rgbm-title">RGBM (folded)</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="rgbm-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="rgbm-tts">0 min</strong></span>
+                                <span class="status" id="rgbm-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                        <div class="model-result" id="tbdm-result">
+                            <h4 id="tbdm-title">TBDM CF:1.0</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="tbdm-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="tbdm-tts">0 min</strong></span>
+                                <span class="status" id="tbdm-status">✅ No Deco</span>
+                            </div>
+                        </div>
+                        <div class="model-result" id="nmri98-result">
+                            <h4>NMRI98 LEM</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="nmri98-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="nmri98-tts">0 min</strong></span>
+                                <span class="status" id="nmri98-status">✅ No Deco</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -261,6 +363,9 @@
                             <option value="vpmb">VPM-B</option>
                             <option value="bvm">BVM(3)</option>
                             <option value="vval18">VVal-18 Thalmann</option>
+                            <option value="rgbm">RGBM (folded)</option>
+                            <option value="tbdm">TBDM</option>
+                            <option value="nmri98">NMRI98 LEM</option>
                         </select>
                     </div>
                     
@@ -308,6 +413,24 @@
                         <div class="schedule-column">
                             <h4>VVal-18</h4>
                             <div id="vval18-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4 id="rgbm-schedule-title">RGBM (folded)</h4>
+                            <div id="rgbm-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4 id="tbdm-schedule-title">TBDM CF:1.0</h4>
+                            <div id="tbdm-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4>NMRI98 LEM</h4>
+                            <div id="nmri98-schedule" class="schedule-list">
                                 <div class="no-deco">No decompression required</div>
                             </div>
                         </div>
