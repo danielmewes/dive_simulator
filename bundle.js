@@ -96,10 +96,10 @@
     
     // === Bühlmann ZH-L16C Model ===
     class BuhlmannModel extends DecompressionModel {
-        constructor(gradientFactorLow = 0.3, gradientFactorHigh = 0.8) {
+        constructor(gradientFactorLow = 30, gradientFactorHigh = 85) {
             super();
-            this.gradientFactorLow = gradientFactorLow;
-            this.gradientFactorHigh = gradientFactorHigh;
+            this.gradientFactorLow = gradientFactorLow;  // Store as percentage
+            this.gradientFactorHigh = gradientFactorHigh; // Store as percentage
             this.initializeTissueCompartments();
         }
         
@@ -162,14 +162,14 @@
         
         getGradientFactors() {
             return {
-                low: this.gradientFactorLow * 100,  // Convert to percentage
-                high: this.gradientFactorHigh * 100
+                low: this.gradientFactorLow,   // Already stored as percentage
+                high: this.gradientFactorHigh
             };
         }
         
         setGradientFactors(gradientFactors) {
-            this.gradientFactorLow = gradientFactors.low / 100;  // Convert from percentage
-            this.gradientFactorHigh = gradientFactors.high / 100;
+            this.gradientFactorLow = gradientFactors.low;   // Store as percentage
+            this.gradientFactorHigh = gradientFactors.high;
         }
         
         calculateGradientFactorAtDepth(depth) {
@@ -189,7 +189,7 @@
                 // Calculate M-value with gradient factors using standard Bühlmann formula
                 // For ceiling calculation, we solve: totalInertGas <= (a * ambientPressure + b) * GF
                 // Rearranging: ambientPressure >= (totalInertGas / GF - b) / a
-                const gf = this.gradientFactorHigh;
+                const gf = this.gradientFactorHigh / 100; // Convert percentage to decimal
                 if (gf > 0 && a > 0) {
                     const requiredAmbientPressure = (totalInertGas / gf - b) / a;
                     const ceiling = Math.max(0, (requiredAmbientPressure - this.surfacePressure) * 10);
@@ -593,8 +593,8 @@
         switch(type.toLowerCase()) {
             case 'buhlmann':
                 return new BuhlmannModel(
-                    (options.gradientFactorLow || 30) / 100,
-                    (options.gradientFactorHigh || 85) / 100
+                    options.gradientFactorLow || 30,
+                    options.gradientFactorHigh || 85
                 );
             case 'vpmb':
                 return new VpmBModel(options.conservatism || 2);
