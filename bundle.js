@@ -396,10 +396,23 @@
             let totalRisk = 0;
             const riskWeights = [0.6, 0.3, 0.1]; // Fast, medium, slow compartment weights
             
-            this.tissueCompartments.forEach((compartment, index) => {
-                const bubbleRisk = Math.max(0, compartment.bubbleVolume - 0.5) * 2; // Risk above threshold
-                totalRisk += bubbleRisk * riskWeights[index];
-            });
+            // Only process the 3 BVM compartments (the model has exactly 3)
+            for (let i = 0; i < Math.min(3, this.tissueCompartments.length); i++) {
+                const compartment = this.tissueCompartments[i];
+                const riskWeight = riskWeights[i] || 0;
+                
+                // Use bubbleVolume if available, otherwise fall back to supersaturation
+                let compartmentRisk = 0;
+                if (compartment.bubbleVolume !== undefined) {
+                    compartmentRisk = Math.max(0, compartment.bubbleVolume - 0.5) * 2; // Risk above threshold
+                } else {
+                    // Fallback: calculate risk from supersaturation
+                    const supersaturation = compartment.totalLoading - this.currentDiveState.ambientPressure;
+                    compartmentRisk = Math.max(0, supersaturation) * 3;
+                }
+                
+                totalRisk += compartmentRisk * riskWeight;
+            }
             
             return Math.min(10, totalRisk); // Cap at 10%
         }
