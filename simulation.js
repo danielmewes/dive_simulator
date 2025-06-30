@@ -437,6 +437,15 @@ class DiveSimulator {
                         borderDash: [2, 6],
                         tension: 0.2,
                         yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (RGBM)',
+                        data: [],
+                        borderColor: '#db2777',
+                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                        borderDash: [4, 4],
+                        tension: 0.2,
+                        yAxisID: 'depth'
                     }
                 ]
             },
@@ -518,6 +527,14 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'RGBM Risk (%)',
+                        data: [],
+                        borderColor: '#db2777',
+                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
                         tension: 0.3,
                         yAxisID: 'risk'
                     },
@@ -1454,6 +1471,9 @@ class DiveSimulator {
         this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
+        this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
+            h.models.rgbm ? h.models.rgbm.ceiling : 0
+        );
         this.profileChart.update('none');
         
         // Update DCS risk chart using model-specific calculations
@@ -1479,8 +1499,13 @@ class DiveSimulator {
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
+        // RGBM risk over time
+        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
+            h.models.rgbm ? h.models.rgbm.risk : 0
+        );
+        
         // Dive profile overlay
-        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
+        this.riskChart.data.datasets[5].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('none');
         
@@ -1547,7 +1572,8 @@ class DiveSimulator {
                 buhlmann: 16,
                 vpmb: 16,
                 bvm: 3,
-                vval18: 3
+                vval18: 3,
+                rgbm: 16
             };
             compartmentCount = modelDefaults[selectedModel] || 16;
         }
