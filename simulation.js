@@ -132,6 +132,12 @@ class DiveSimulator {
                 document.querySelectorAll('.time-speed').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 this.timeSpeed = parseInt(e.target.textContent.replace('x', ''));
+                
+                // Restart simulation with new timing if currently running
+                if (this.isRunning) {
+                    this.pauseSimulation();
+                    this.startSimulation();
+                }
             });
         });
         
@@ -1498,9 +1504,15 @@ class DiveSimulator {
     
     startSimulation() {
         this.isRunning = true;
+        // Calculate interval to update every 10 seconds of dive time
+        // At 1x: 10000ms (10s wallclock = 10s dive time)
+        // At 10x: 1000ms (1s wallclock = 10s dive time)  
+        // At 60x: 167ms (0.167s wallclock = 10s dive time)
+        // At 600x: 17ms (0.017s wallclock = 10s dive time)
+        const intervalMs = Math.max(10000 / this.timeSpeed, 16); // Minimum 16ms for performance
         this.intervalId = setInterval(() => {
             this.updateSimulation();
-        }, 1000); // Update every second
+        }, intervalMs);
     }
     
     pauseSimulation() {
@@ -1624,8 +1636,8 @@ class DiveSimulator {
     updateSimulation() {
         if (!this.isRunning) return;
         
-        // Advance time based on speed multiplier
-        const timeStep = this.timeSpeed / 60; // Convert to minutes
+        // Advance time by exactly 10 seconds (1/6 minute) of dive time per update
+        const timeStep = 1/6; // 10 seconds in minutes
         this.diveTime += timeStep;
         
         // Update all models
