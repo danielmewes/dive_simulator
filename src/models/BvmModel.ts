@@ -70,11 +70,17 @@ export class BvmModel extends DecompressionModel {
   private readonly MECHANICAL_RESISTANCE = [1.0, 1.2, 1.5]; // Mechanical resistance accelerates resolution
   private readonly RISK_WEIGHTINGS = [0.6, 0.3, 0.1]; // Weighting factors for risk calculation
 
-  constructor(conservatismLevel: number = 3, maxDcsRisk: number = 5.0) {
+  constructor(options: { conservatism?: number; maxDcsRisk?: number } | number = {}) {
     super();
     
-    this.conservatismLevel = Math.max(0, Math.min(5, conservatismLevel));
-    this.maxDcsRisk = Math.max(0.1, Math.min(100, maxDcsRisk)); // Clamp between 0.1% and 100%
+    // Handle legacy single parameter or new options object
+    if (typeof options === 'number') {
+      this.conservatismLevel = Math.max(0, Math.min(5, options));
+      this.maxDcsRisk = 5.0; // Default value
+    } else {
+      this.conservatismLevel = Math.max(0, Math.min(5, options.conservatism || 3));
+      this.maxDcsRisk = Math.max(0.1, Math.min(100, options.maxDcsRisk || 5.0));
+    }
     
     this.bubbleVolumeParameters = {
       criticalBubbleVolume: 100.0, // Arbitrary units
