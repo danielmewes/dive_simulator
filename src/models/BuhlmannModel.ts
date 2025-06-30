@@ -149,11 +149,12 @@ export class BuhlmannModel extends DecompressionModel {
         }
       };
 
-      this.updateCombinedMValues(buhlmannCompartment);
-
       // Use the same object for both arrays to maintain sync
       this.tissueCompartments.push(buhlmannCompartment);
       this.buhlmannCompartments.push(buhlmannCompartment);
+      
+      // Update combined M-values after adding to arrays
+      this.updateCombinedMValues(buhlmannCompartment);
     }
   }
 
@@ -162,8 +163,12 @@ export class BuhlmannModel extends DecompressionModel {
     const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
 
     for (let i = 0; i < this.tissueCompartments.length; i++) {
-      const compartment = this.tissueCompartments[i]!;
-      const buhlmannCompartment = this.buhlmannCompartments[i]!;
+      const compartment = this.tissueCompartments[i];
+      const buhlmannCompartment = this.buhlmannCompartments[i];
+      
+      if (!compartment || !buhlmannCompartment) {
+        continue; // Skip if compartment is not properly initialized
+      }
 
       // Update nitrogen loading using Haldane equation
       compartment.nitrogenLoading = this.calculateHaldaneLoading(
@@ -307,9 +312,14 @@ export class BuhlmannModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
     
+    // Ensure compartments are initialized
+    if (!this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
+    }
+    
     const compartment = this.buhlmannCompartments[compartmentNumber - 1];
     if (!compartment) {
-      throw new Error('Compartment not found');
+      throw new Error(`Compartment ${compartmentNumber} not found. Available compartments: ${this.buhlmannCompartments.length}`);
     }
     return { ...compartment };
   }
@@ -330,6 +340,10 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   private updateCombinedMValues(compartment: BuhlmannCompartment): void {
+    if (!compartment) {
+      return; // Skip if compartment is undefined
+    }
+    
     const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
     
     if (totalInertGas <= 0) {
@@ -430,5 +444,40 @@ export class BuhlmannModel extends DecompressionModel {
     }
 
     return 1; // Minimum stop time
+  }
+
+  /**
+   * Calculate DCS risk as a percentage based on Buhlmann M-values and tissue supersaturation
+   * Uses the maximum supersaturation across all compartments
+   * @returns DCS risk as a percentage (0-100)
+   */
+  public calculateDCSRisk(): number {
+    let maxSupersaturationRatio = 0;
+    
+    for (let i = 1; i <= 16; i++) {
+      const compartment = this.buhlmannCompartments[i - 1];
+      if (!compartment) continue;
+      
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      const ambientPressure = this.currentDiveState.ambientPressure;
+      
+      // Calculate M-value at current depth
+      const mValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
+      
+      // Apply gradient factors
+      const effectiveGradientFactor = this.getGradientFactorAtDepth(this.currentDiveState.depth);
+      const allowableSupersaturation = mValue * (effectiveGradientFactor / 100);
+      
+      // Calculate supersaturation ratio
+      const supersaturation = Math.max(0, totalLoading - ambientPressure);
+      const supersaturationRatio = supersaturation / allowableSupersaturation;
+      
+      maxSupersaturationRatio = Math.max(maxSupersaturationRatio, supersaturationRatio);
+    }
+    
+    // Convert to percentage with exponential scaling for higher risk levels
+    const riskPercentage = Math.min(100, maxSupersaturationRatio * maxSupersaturationRatio * 50);
+    
+    return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
   }
 }
