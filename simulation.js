@@ -30,10 +30,16 @@ class DiveSimulator {
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
         
+        // Zoom state
+        this.zoomMode = 'full'; // 'full' or 'recent'
+        
         this.initializeModels();
         this.initializeEventListeners();
         this.initializeCharts();
         this.updateDisplay();
+        
+        // Initialize zoom controls (set default to full dive view)
+        document.getElementById('zoom-full').classList.add('active');
         
         // Record initial data point
         this.recordDiveHistory();
@@ -185,6 +191,63 @@ class DiveSimulator {
             this.selectedDetailedModel = e.target.value;
             this.updateDetailedTissueChart();
         });
+        
+        // Zoom controls
+        document.getElementById('zoom-full').addEventListener('click', () => {
+            this.setZoomMode('full');
+        });
+        
+        document.getElementById('zoom-recent').addEventListener('click', () => {
+            this.setZoomMode('recent');
+        });
+    }
+    
+    setZoomMode(mode) {
+        this.zoomMode = mode;
+        
+        // Update UI buttons
+        document.querySelectorAll('.zoom-btn').forEach(btn => btn.classList.remove('active'));
+        if (mode === 'full') {
+            document.getElementById('zoom-full').classList.add('active');
+        } else if (mode === 'recent') {
+            document.getElementById('zoom-recent').classList.add('active');
+        }
+        
+        // Update all charts with new zoom
+        this.updateCharts();
+        
+        console.log(`Chart zoom mode set to: ${mode}`);
+    }
+    
+    getZoomedData() {
+        if (this.diveHistory.length === 0) {
+            return { history: [], startIndex: 0 };
+        }
+        
+        if (this.zoomMode === 'full') {
+            // Show entire dive from t=0
+            return { history: this.diveHistory, startIndex: 0 };
+        } else if (this.zoomMode === 'recent') {
+            // Show last 60 minutes
+            const currentTime = this.diveTime;
+            const startTime = Math.max(0, currentTime - 60);
+            
+            // Find the index where we should start showing data
+            let startIndex = 0;
+            for (let i = 0; i < this.diveHistory.length; i++) {
+                if (this.diveHistory[i].time >= startTime) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            
+            return { 
+                history: this.diveHistory.slice(startIndex), 
+                startIndex: startIndex 
+            };
+        }
+        
+        return { history: this.diveHistory, startIndex: 0 };
     }
     
     initializeCharts() {
@@ -942,6 +1005,11 @@ class DiveSimulator {
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
         
+        // Reset zoom to full view
+        this.zoomMode = 'full';
+        document.querySelectorAll('.zoom-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('zoom-full').classList.add('active');
+        
         // Clear charts
         this.tissueChart.data.labels = [];
         this.tissueChart.data.datasets.forEach(dataset => dataset.data = []);
@@ -1125,12 +1193,20 @@ class DiveSimulator {
             return;
         }
         
+        // Get zoomed data based on current zoom mode
+        const { history: zoomedHistory } = this.getZoomedData();
+        
+        if (zoomedHistory.length === 0) {
+            console.log('No zoomed history available for charts');
+            return;
+        }
+        
         // Update tissue loading chart
-        const timeLabels = this.diveHistory.map(h => Math.round(h.time * 10) / 10); // Round to 1 decimal
+        const timeLabels = zoomedHistory.map(h => Math.round(h.time * 10) / 10); // Round to 1 decimal
         this.tissueChart.data.labels = timeLabels;
         
         // Bühlmann fast tissues (average of first 4 compartments)
-        this.tissueChart.data.datasets[0].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[0].data = zoomedHistory.map(h => {
             if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
             const loadings = h.models.buhlmann.tissueLoadings;
             const fastAvg = loadings.slice(0, 4)
@@ -1139,7 +1215,7 @@ class DiveSimulator {
         });
         
         // Bühlmann slow tissues (average of last 4 compartments)
-        this.tissueChart.data.datasets[1].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[1].data = zoomedHistory.map(h => {
             if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
             const loadings = h.models.buhlmann.tissueLoadings;
             const slowAvg = loadings.slice(-4)
@@ -1148,7 +1224,7 @@ class DiveSimulator {
         });
         
         // VPM-B fast tissues (average of first 4 compartments)
-        this.tissueChart.data.datasets[2].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[2].data = zoomedHistory.map(h => {
             if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
             const loadings = h.models.vpmb.tissueLoadings;
             const fastAvg = loadings.slice(0, 4)
@@ -1157,7 +1233,7 @@ class DiveSimulator {
         });
         
         // VPM-B slow tissues (average of last 4 compartments)
-        this.tissueChart.data.datasets[3].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[3].data = zoomedHistory.map(h => {
             if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
             const loadings = h.models.vpmb.tissueLoadings;
             const slowAvg = loadings.slice(-4)
@@ -1166,7 +1242,7 @@ class DiveSimulator {
         });
         
         // BVM fast tissues (compartment 1 - Fast: 12.5 min)
-        this.tissueChart.data.datasets[4].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[4].data = zoomedHistory.map(h => {
             if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[0]) {
                 return 1.013;
             }
@@ -1174,7 +1250,7 @@ class DiveSimulator {
         });
         
         // BVM slow tissues (compartment 3 - Slow: 423 min)
-        this.tissueChart.data.datasets[5].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[5].data = zoomedHistory.map(h => {
             if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[2]) {
                 return 1.013;
             }
@@ -1182,7 +1258,7 @@ class DiveSimulator {
         });
         
         // VVal-18 fast tissues (compartment 1 - Fast: 5 min)
-        this.tissueChart.data.datasets[6].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[6].data = zoomedHistory.map(h => {
             if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[0]) {
                 return 1.013;
             }
@@ -1190,7 +1266,7 @@ class DiveSimulator {
         });
         
         // VVal-18 slow tissues (compartment 3 - Slow: 240 min)
-        this.tissueChart.data.datasets[7].data = this.diveHistory.map(h => {
+        this.tissueChart.data.datasets[7].data = zoomedHistory.map(h => {
             if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[2]) {
                 return 1.013;
             }
@@ -1201,17 +1277,17 @@ class DiveSimulator {
         
         // Update dive profile chart
         this.profileChart.data.labels = timeLabels;
-        this.profileChart.data.datasets[0].data = this.diveHistory.map(h => h.depth);
-        this.profileChart.data.datasets[1].data = this.diveHistory.map(h => 
+        this.profileChart.data.datasets[0].data = zoomedHistory.map(h => h.depth);
+        this.profileChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.buhlmann ? h.models.buhlmann.ceiling : 0
         );
-        this.profileChart.data.datasets[2].data = this.diveHistory.map(h => 
+        this.profileChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.vpmb ? h.models.vpmb.ceiling : 0
         );
-        this.profileChart.data.datasets[3].data = this.diveHistory.map(h => 
+        this.profileChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.bvm ? h.models.bvm.ceiling : 0
         );
-        this.profileChart.data.datasets[4].data = this.diveHistory.map(h => 
+        this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
         this.profileChart.update('none');
@@ -1220,27 +1296,27 @@ class DiveSimulator {
         this.riskChart.data.labels = timeLabels;
         
         // Bühlmann risk over time
-        this.riskChart.data.datasets[0].data = this.diveHistory.map(h => 
+        this.riskChart.data.datasets[0].data = zoomedHistory.map(h => 
             h.models.buhlmann ? h.models.buhlmann.risk : 0
         );
         
         // VPM-B risk over time
-        this.riskChart.data.datasets[1].data = this.diveHistory.map(h => 
+        this.riskChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.vpmb ? h.models.vpmb.risk : 0
         );
         
         // BVM(3) risk over time
-        this.riskChart.data.datasets[2].data = this.diveHistory.map(h => 
+        this.riskChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.bvm ? h.models.bvm.risk : 0
         );
         
         // VVal-18 risk over time
-        this.riskChart.data.datasets[3].data = this.diveHistory.map(h => 
+        this.riskChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
         // Dive profile overlay
-        this.riskChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
+        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('none');
         
@@ -1251,28 +1327,28 @@ class DiveSimulator {
         this.bubbleChart.data.labels = timeLabels;
         
         // VPM-B Bubble Count (Compartment 1)
-        this.bubbleChart.data.datasets[0].data = this.diveHistory.map(h => 
+        this.bubbleChart.data.datasets[0].data = zoomedHistory.map(h => 
             h.models.vpmb && h.models.vpmb.bubbleCount !== undefined ? h.models.vpmb.bubbleCount : 0
         );
         
         // VPM-B Critical Radius (nanometers)
-        this.bubbleChart.data.datasets[1].data = this.diveHistory.map(h => 
+        this.bubbleChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.vpmb && h.models.vpmb.criticalRadius !== undefined ? h.models.vpmb.criticalRadius : 1000
         );
         
         // BVM(3) Bubble Volume (Compartment 1)
-        this.bubbleChart.data.datasets[2].data = this.diveHistory.map(h => 
+        this.bubbleChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.bvm && h.models.bvm.bubbleVolume !== undefined ? h.models.bvm.bubbleVolume : 0
         );
         
         // BVM(3) Formation Rate
-        this.bubbleChart.data.datasets[3].data = this.diveHistory.map(h => 
+        this.bubbleChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.bvm && h.models.bvm.bubbleFormationRate !== undefined ? h.models.bvm.bubbleFormationRate : 0
         );
         
         this.bubbleChart.update('none');
         
-        console.log(`Updated charts with ${this.diveHistory.length} data points`);
+        console.log(`Updated charts with ${zoomedHistory.length} data points (zoom mode: ${this.zoomMode})`);
     }
     
     updateDetailedTissueChart() {
@@ -1280,15 +1356,22 @@ class DiveSimulator {
             return;
         }
         
-        const timeLabels = this.diveHistory.map(h => Math.round(h.time * 10) / 10);
+        // Get zoomed data for detailed tissue chart
+        const { history: zoomedHistory } = this.getZoomedData();
+        
+        if (zoomedHistory.length === 0) {
+            return;
+        }
+        
+        const timeLabels = zoomedHistory.map(h => Math.round(h.time * 10) / 10);
         this.detailedTissueChart.data.labels = timeLabels;
         
         const selectedModel = this.selectedDetailedModel;
         
         // Determine the number of compartments for the selected model
         let compartmentCount = 0;
-        if (this.diveHistory.length > 0 && this.diveHistory[0].models[selectedModel]) {
-            compartmentCount = this.diveHistory[0].models[selectedModel].tissueLoadings.length;
+        if (zoomedHistory.length > 0 && zoomedHistory[0].models[selectedModel]) {
+            compartmentCount = zoomedHistory[0].models[selectedModel].tissueLoadings.length;
         }
         
         // If we couldn't determine compartment count from history, use model defaults
@@ -1309,7 +1392,7 @@ class DiveSimulator {
         for (let i = 0; i < compartmentCount; i++) {
             newDatasets.push({
                 label: `Compartment ${i + 1}`,
-                data: this.diveHistory.map(h => {
+                data: zoomedHistory.map(h => {
                     if (!h.models[selectedModel] || !h.models[selectedModel].tissueLoadings) {
                         return 1.013;
                     }
@@ -1326,7 +1409,7 @@ class DiveSimulator {
         // Add ambient pressure line
         newDatasets.push({
             label: 'Ambient Pressure',
-            data: this.diveHistory.map(h => h.ambientPressure || 1.013),
+            data: zoomedHistory.map(h => h.ambientPressure || 1.013),
             borderColor: '#ffffff',
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
             borderDash: [5, 5],
