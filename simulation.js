@@ -305,16 +305,19 @@ class DiveSimulator {
             return { history: [], startIndex: 0 };
         }
         
+        let targetHistory = [];
+        let startIndex = 0;
+        
         if (this.zoomMode === 'full') {
             // Show entire dive from t=0
-            return { history: this.diveHistory, startIndex: 0 };
+            targetHistory = this.diveHistory;
+            startIndex = 0;
         } else if (this.zoomMode === 'recent') {
             // Show last 60 minutes
             const currentTime = this.diveTime;
             const startTime = Math.max(0, currentTime - 60);
             
             // Find the index where we should start showing data
-            let startIndex = 0;
             for (let i = 0; i < this.diveHistory.length; i++) {
                 if (this.diveHistory[i].time >= startTime) {
                     startIndex = i;
@@ -322,13 +325,37 @@ class DiveSimulator {
                 }
             }
             
-            return { 
-                history: this.diveHistory.slice(startIndex), 
-                startIndex: startIndex 
-            };
+            targetHistory = this.diveHistory.slice(startIndex);
+        } else {
+            targetHistory = this.diveHistory;
         }
         
-        return { history: this.diveHistory, startIndex: 0 };
+        // Sub-sample data if there are too many points for performance
+        // Keep all data for short dives, but sub-sample longer dives for chart rendering
+        const maxDisplayPoints = 500; // Reasonable limit for chart performance
+        
+        if (targetHistory.length <= maxDisplayPoints) {
+            return { history: targetHistory, startIndex: startIndex };
+        }
+        
+        // Sub-sample by taking every nth point, but always include the most recent points
+        const subsampleRatio = Math.ceil(targetHistory.length / maxDisplayPoints);
+        const subsampledHistory = [];
+        
+        for (let i = 0; i < targetHistory.length; i += subsampleRatio) {
+            subsampledHistory.push(targetHistory[i]);
+        }
+        
+        // Always include the last point if it wasn't included by sub-sampling
+        const lastPoint = targetHistory[targetHistory.length - 1];
+        const lastSubsampledPoint = subsampledHistory[subsampledHistory.length - 1];
+        if (lastSubsampledPoint.time !== lastPoint.time) {
+            subsampledHistory.push(lastPoint);
+        }
+        
+        console.log(`Sub-sampled dive history: ${targetHistory.length} points -> ${subsampledHistory.length} points (ratio: ${subsampleRatio})`);
+        
+        return { history: subsampledHistory, startIndex: startIndex };
     }
     
     updateModelVisibility() {
@@ -1721,11 +1748,6 @@ class DiveSimulator {
         });
         
         this.diveHistory.push(historyPoint);
-        
-        // Keep only last 100 points for performance
-        if (this.diveHistory.length > 100) {
-            this.diveHistory.shift();
-        }
         
         console.log(`Recorded dive history point at ${this.diveTime.toFixed(1)} min, depth ${this.currentDepth}m, total points: ${this.diveHistory.length}`);
     }
