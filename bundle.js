@@ -468,7 +468,6 @@
             return this.calculateCeiling() <= 0;
         }
         
-<<<<<<< HEAD
         calculateTotalDcsRisk() {
             // Simplified BVM(3) DCS risk calculation based on bubble volumes
             let totalRisk = 0;
