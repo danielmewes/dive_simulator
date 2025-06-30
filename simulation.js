@@ -29,6 +29,8 @@ class DiveSimulator {
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        this.rgbmGradientFactors = { low: 25, high: 85 };
+        this.rgbmConservatism = 2;
         
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
@@ -60,6 +62,11 @@ class DiveSimulator {
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
+                }),
+                rgbm: window.DecompressionSimulator.createModel('rgbm', {
+                    gradientFactorLow: this.rgbmGradientFactors.low,
+                    gradientFactorHigh: this.rgbmGradientFactors.high,
+                    conservatism: this.rgbmConservatism
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -312,6 +319,20 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#be185d',
                         backgroundColor: 'rgba(190, 24, 93, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'RGBM - Fast Tissues',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'RGBM - Slow Tissues',
+                        data: [],
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
                         tension: 0.4
                     },
                     {
@@ -904,6 +925,42 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
+    updateRgbmGradientFactors(newGfLow, newGfHigh) {
+        this.rgbmGradientFactors = { low: newGfLow, high: newGfHigh };
+        
+        this.updateModelWithNewParameters(
+            'rgbm', 
+            'rgbm', 
+            { 
+                gradientFactorLow: newGfLow, 
+                gradientFactorHigh: newGfHigh,
+                conservatism: this.rgbmConservatism
+            },
+            '#rgbm-result h4',
+            `RGBM (folded) - GF ${newGfLow}/${newGfHigh}, C${this.rgbmConservatism}`
+        );
+        
+        console.log(`RGBM gradient factors updated to ${newGfLow}/${newGfHigh}`);
+    }
+    
+    updateRgbmConservatism(newConservatism) {
+        this.rgbmConservatism = newConservatism;
+        
+        this.updateModelWithNewParameters(
+            'rgbm', 
+            'rgbm', 
+            { 
+                gradientFactorLow: this.rgbmGradientFactors.low, 
+                gradientFactorHigh: this.rgbmGradientFactors.high,
+                conservatism: newConservatism
+            },
+            '#rgbm-result h4',
+            `RGBM (folded) - GF ${this.rgbmGradientFactors.low}/${this.rgbmGradientFactors.high}, C${newConservatism}`
+        );
+        
+        console.log(`RGBM conservatism updated to ${newConservatism}`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -912,6 +969,7 @@ class DiveSimulator {
         const vpmBPanel = document.getElementById('vpmb-settings');
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
+        const rgbmPanel = document.getElementById('rgbm-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -919,6 +977,7 @@ class DiveSimulator {
             vpmBPanel.style.display = 'none';
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
+            rgbmPanel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -930,6 +989,9 @@ class DiveSimulator {
                     break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
+                    break;
+                case 'rgbm':
+                    rgbmPanel.style.display = 'block';
                     break;
             }
         };
@@ -986,6 +1048,32 @@ class DiveSimulator {
             const newGfHigh = parseInt(e.target.value);
             vval18GfHighDisplay.textContent = newGfHigh;
             this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
+        });
+        
+        // RGBM gradient factor and conservatism controls
+        const rgbmGfLowSlider = document.getElementById('unified-rgbm-gf-low');
+        const rgbmGfLowDisplay = document.getElementById('unified-rgbm-gf-low-display');
+        const rgbmGfHighSlider = document.getElementById('unified-rgbm-gf-high');
+        const rgbmGfHighDisplay = document.getElementById('unified-rgbm-gf-high-display');
+        const rgbmConservatismSlider = document.getElementById('unified-rgbm-conservatism');
+        const rgbmConservatismDisplay = document.getElementById('unified-rgbm-conservatism-display');
+        
+        rgbmGfLowSlider.addEventListener('input', (e) => {
+            const newGfLow = parseInt(e.target.value);
+            rgbmGfLowDisplay.textContent = newGfLow;
+            this.updateRgbmGradientFactors(newGfLow, this.rgbmGradientFactors.high);
+        });
+        
+        rgbmGfHighSlider.addEventListener('input', (e) => {
+            const newGfHigh = parseInt(e.target.value);
+            rgbmGfHighDisplay.textContent = newGfHigh;
+            this.updateRgbmGradientFactors(this.rgbmGradientFactors.low, newGfHigh);
+        });
+        
+        rgbmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            rgbmConservatismDisplay.textContent = newConservatism;
+            this.updateRgbmConservatism(newConservatism);
         });
     }
     
@@ -1310,8 +1398,26 @@ class DiveSimulator {
             return h.models.vval18.tissueLoadings[2];
         });
         
+        // RGBM fast tissues (average of first 4 compartments)
+        this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
+            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
+            const loadings = h.models.rgbm.tissueLoadings;
+            const fastAvg = loadings.slice(0, 4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return fastAvg;
+        });
+        
+        // RGBM slow tissues (average of last 4 compartments)
+        this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
+            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
+            const loadings = h.models.rgbm.tissueLoadings;
+            const slowAvg = loadings.slice(-4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return slowAvg;
+        });
+        
         // Ambient pressure overlay
-        this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        this.tissueChart.data.datasets[10].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('none');
         
