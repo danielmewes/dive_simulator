@@ -11,7 +11,8 @@ class DiveSimulator {
             buhlmann: true,
             vpmb: true,
             bvm: true,
-            vval18: true
+            vval18: true,
+            rgbm: true
         };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
@@ -39,6 +40,7 @@ class DiveSimulator {
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        this.rgbmConservatism = 2;
         
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
@@ -74,6 +76,9 @@ class DiveSimulator {
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
+                }),
+                rgbm: window.DecompressionSimulator.createModel('rgbm', {
+                    conservatism: this.rgbmConservatism
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -235,6 +240,11 @@ class DiveSimulator {
             this.enabledModels.vval18 = e.target.checked;
             this.updateModelVisibility();
         });
+        
+        document.getElementById('model-rgbm').addEventListener('change', (e) => {
+            this.enabledModels.rgbm = e.target.checked;
+            this.updateModelVisibility();
+        });
     }
     
     setZoomMode(mode) {
@@ -322,7 +332,8 @@ class DiveSimulator {
             buhlmann: 'Bühlmann ZH-L16C',
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
+            vval18: 'VVal-18 Thalmann',
+            rgbm: 'RGBM (folded)'
         };
         
         let foundValidOption = false;
@@ -439,6 +450,20 @@ class DiveSimulator {
                         tension: 0.4
                     },
                     {
+                        label: 'RGBM - Fast Tissues',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'RGBM - Slow Tissues',
+                        data: [],
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        tension: 0.4
+                    },
+                    {
                         label: 'Ambient Pressure',
                         data: [],
                         borderColor: '#ffffff',
@@ -546,6 +571,15 @@ class DiveSimulator {
                         borderDash: [2, 6],
                         tension: 0.2,
                         yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (RGBM)',
+                        data: [],
+                        borderColor: '#db2777',
+                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                        borderDash: [4, 4],
+                        tension: 0.2,
+                        yAxisID: 'depth'
                     }
                 ]
             },
@@ -633,6 +667,14 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'RGBM Risk (%)',
+                        data: [],
+                        borderColor: '#db2777',
+                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
                         tension: 0.3,
                         yAxisID: 'risk'
                     },
@@ -1085,6 +1127,25 @@ class DiveSimulator {
         console.log(`BVM maximum DCS risk updated to ${newMaxDcsRisk}%`);
     }
     
+    updateRgbmConservatism(newConservatism) {
+        this.rgbmConservatism = newConservatism;
+        
+        this.updateModelWithNewParameters(
+            'rgbm', 
+            'rgbm', 
+            { 
+                conservatism: newConservatism
+            },
+            '#rgbm-title',
+            `RGBM (folded) - C${newConservatism}`
+        );
+        
+        // Also update the schedule title
+        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - C${newConservatism}`;
+        
+        console.log(`RGBM conservatism updated to ${newConservatism}`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -1094,6 +1155,7 @@ class DiveSimulator {
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
         const bvmPanel = document.getElementById('bvm-settings');
+        const rgbmPanel = document.getElementById('rgbm-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -1102,6 +1164,7 @@ class DiveSimulator {
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
             bvmPanel.style.display = 'none';
+            rgbmPanel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -1114,8 +1177,14 @@ class DiveSimulator {
                 case 'bvm':
                     bvmPanel.style.display = 'block';
                     break;
+                case 'bvm':
+                    bvmPanel.style.display = 'block';
+                    break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
+                    break;
+                case 'rgbm':
+                    rgbmPanel.style.display = 'block';
                     break;
             }
         };
@@ -1191,6 +1260,16 @@ class DiveSimulator {
             bvmMaxDcsRiskDisplay.textContent = newMaxDcsRisk.toFixed(1);
             this.updateBvmMaxDcsRisk(newMaxDcsRisk);
         });
+        
+        // RGBM conservatism control
+        const rgbmConservatismSlider = document.getElementById('unified-rgbm-conservatism');
+        const rgbmConservatismDisplay = document.getElementById('unified-rgbm-conservatism-display');
+        
+        rgbmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            rgbmConservatismDisplay.textContent = newConservatism;
+            this.updateRgbmConservatism(newConservatism);
+        });
     }
     
     startSimulation() {
@@ -1245,6 +1324,11 @@ class DiveSimulator {
         document.getElementById('unified-bvm-max-dcs-risk-display').textContent = '5.0';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        this.rgbmConservatism = 2;
+        
+        // Reset RGBM controls
+        document.getElementById('unified-rgbm-conservatism').value = 2;
+        document.getElementById('unified-rgbm-conservatism-display').textContent = '2';
         
         // Reset model titles to default
         document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
@@ -1252,6 +1336,8 @@ class DiveSimulator {
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
         document.getElementById('bvm-result').querySelector('h4').textContent = 'BVM(3)';
+        document.getElementById('rgbm-title').textContent = 'RGBM (folded)';
+        document.getElementById('rgbm-schedule-title').textContent = 'RGBM (folded)';
         
         // Reset zoom to full view
         this.zoomMode = 'full';
@@ -1408,7 +1494,7 @@ class DiveSimulator {
             const totalTime = stops.reduce((sum, stop) => sum + stop.time, 0);
             
             // Update ceiling and TTS
-            document.getElementById(`${name}-ceiling`).textContent = `${ceiling}m`;
+            document.getElementById(`${name}-ceiling`).textContent = `${Math.round(ceiling)}m`;
             document.getElementById(`${name}-tts`).textContent = totalTime > 0 ? `${Math.round(totalTime)} min` : '0 min';
             
             // Update status
@@ -1532,8 +1618,26 @@ class DiveSimulator {
             return h.models.vval18.tissueLoadings[2];
         });
         
+        // RGBM fast tissues (average of first 4 compartments)
+        this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
+            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
+            const loadings = h.models.rgbm.tissueLoadings;
+            const fastAvg = loadings.slice(0, 4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return fastAvg;
+        });
+        
+        // RGBM slow tissues (average of last 4 compartments)
+        this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
+            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
+            const loadings = h.models.rgbm.tissueLoadings;
+            const slowAvg = loadings.slice(-4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return slowAvg;
+        });
+        
         // Ambient pressure overlay
-        this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        this.tissueChart.data.datasets[10].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
         
@@ -1564,6 +1668,13 @@ class DiveSimulator {
         this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
+        
+        // RGBM ceiling - Dataset 5
+        this.profileChart.data.datasets[5].hidden = !this.enabledModels.rgbm;
+        this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
+            h.models.rgbm ? h.models.rgbm.ceiling : 0
+        );
+        
         this.profileChart.update('default');
         
         // Update DCS risk chart using model-specific calculations
@@ -1593,8 +1704,14 @@ class DiveSimulator {
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
-        // Dive profile overlay - Dataset 4 (always visible)
-        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
+        // RGBM risk over time - Dataset 4
+        this.riskChart.data.datasets[4].hidden = !this.enabledModels.rgbm;
+        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
+            h.models.rgbm ? h.models.rgbm.risk : 0
+        );
+        
+        // Dive profile overlay - Dataset 5 (always visible)
+        this.riskChart.data.datasets[5].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('default');
         
@@ -1674,7 +1791,8 @@ class DiveSimulator {
                 buhlmann: 16,
                 vpmb: 16,
                 bvm: 3,
-                vval18: 3
+                vval18: 3,
+                rgbm: 16
             };
             compartmentCount = modelDefaults[selectedModel] || 16;
         }
@@ -1720,7 +1838,8 @@ class DiveSimulator {
             buhlmann: 'Bühlmann ZH-L16C',
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
+            vval18: 'VVal-18 Thalmann',
+            rgbm: 'RGBM (folded)'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
