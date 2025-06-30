@@ -1082,11 +1082,6 @@
             return this.totalBubbleVolume;
         }
         
-        setRepetitiveDiveParams(diveCount, surfaceTimeHours) {
-            this.diveCount = Math.max(1, diveCount);
-            this.lastSurfaceTime = Math.max(0, surfaceTimeHours);
-        }
-        
         resetToSurface() {
             this.tissueCompartments.forEach(compartment => {
                 compartment.nitrogenLoading = 0.79 * this.surfacePressure;

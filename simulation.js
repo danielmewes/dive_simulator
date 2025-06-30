@@ -1572,7 +1572,8 @@ class DiveSimulator {
             buhlmann: 'Bühlmann ZH-L16C',
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
+            vval18: 'VVal-18 Thalmann',
+            rgbm: 'RGBM (folded)'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
