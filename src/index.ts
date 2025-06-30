@@ -33,6 +33,9 @@ export { TbdmModel } from './models/TbdmModel';
 // Export NMRI98 Linear Exponential Model implementation
 export { Nmri98Model } from './models/Nmri98Model';
 
+// Export Hills Thermodynamic Model implementation
+export { HillsModel } from './models/HillsModel';
+
 // Export example/demo functions
 export { runVpmBDemo } from './examples/vpmb-demo';
 export { runBuhlmannDemo } from './examples/buhlmann-demo';
