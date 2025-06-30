@@ -18,6 +18,7 @@ class DiveSimulator {
         this.detailedTissueChart = null;
         this.profileChart = null;
         this.riskChart = null;
+        this.bubbleChart = null;
         
         // Current dive parameters
         this.currentDepth = 0;
@@ -215,6 +216,8 @@ class DiveSimulator {
                         this.profileChart.resize();
                     } else if (chartId === 'dcs-risk-chart' && this.riskChart) {
                         this.riskChart.resize();
+                    } else if (chartId === 'bubble-parameters-chart' && this.bubbleChart) {
+                        this.bubbleChart.resize();
                     }
                 }, 100); // Small delay to ensure the visibility transition completes
             });
@@ -589,6 +592,131 @@ class DiveSimulator {
                 }
             }
         });
+        // Bubble Parameters Chart
+        const bubbleCtx = document.getElementById('bubble-parameters-chart').getContext('2d');
+        this.bubbleChart = new Chart(bubbleCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'VPM-B Bubble Count (Comp 1)',
+                        data: [],
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'count'
+                    },
+                    {
+                        label: 'VPM-B Critical Radius (nm)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        borderDash: [3, 3],
+                        yAxisID: 'radius'
+                    },
+                    {
+                        label: 'BVM(3) Bubble Volume (Comp 1)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'volume'
+                    },
+                    {
+                        label: 'BVM(3) Formation Rate',
+                        data: [],
+                        borderColor: '#d97706',
+                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        tension: 0.4,
+                        borderDash: [5, 2],
+                        yAxisID: 'rate'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Bubble Model Internal Parameters',
+                        color: '#e2e8f0'
+                    },
+                    legend: {
+                        labels: {
+                            color: '#e2e8f0'
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (minutes)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: 'rgba(226, 232, 240, 0.1)' }
+                    },
+                    count: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Bubble Count',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { 
+                            color: 'rgba(52, 211, 153, 0.1)',
+                            drawOnChartArea: false,
+                        }
+                    },
+                    radius: {
+                        type: 'linear',
+                        display: false,
+                        position: 'left',
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    },
+                    volume: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Bubble Volume / Formation Rate',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { 
+                            color: 'rgba(245, 158, 11, 0.1)',
+                            drawOnChartArea: false,
+                        }
+                    },
+                    rate: {
+                        type: 'linear',
+                        display: false,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                }
+            }
+        });
         
         // Current selected model for detailed view
         this.selectedDetailedModel = 'buhlmann';
@@ -790,6 +918,10 @@ class DiveSimulator {
         this.detailedTissueChart.data.datasets = []; // Clear all datasets since they will be rebuilt
         this.detailedTissueChart.update();
         
+        this.bubbleChart.data.labels = [];
+        this.bubbleChart.data.datasets.forEach(dataset => dataset.data = []);
+        this.bubbleChart.update();
+        
         this.updateDisplay();
         
         // Record initial data point after reset
@@ -847,6 +979,35 @@ class DiveSimulator {
                     canAscend: model.canAscendDirectly(),
                     risk: model.calculateDCSRisk ? model.calculateDCSRisk() : 0
                 };
+
+                // Add bubble model specific parameters
+                if (name === 'vpmb' && typeof model.calculateBubbleCount === 'function') {
+                    try {
+                        historyPoint.models[name].bubbleCount = model.calculateBubbleCount(1); // First compartment
+                        const vpmData = model.getVpmBCompartmentData(1);
+                        historyPoint.models[name].criticalRadius = vpmData.adjustedCriticalRadius;
+                        historyPoint.models[name].maxCrushingPressure = vpmData.maxCrushingPressure;
+                    } catch (vpmError) {
+                        console.warn('Error getting VPM-B bubble parameters:', vpmError);
+                        historyPoint.models[name].bubbleCount = 0;
+                        historyPoint.models[name].criticalRadius = 1000; // Default 1000 nm
+                        historyPoint.models[name].maxCrushingPressure = 1.013;
+                    }
+                }
+
+                if (name === 'bvm' && typeof model.calculateBubbleVolume === 'function') {
+                    try {
+                        historyPoint.models[name].bubbleVolume = model.calculateBubbleVolume(1); // First compartment
+                        const bvmData = model.getBvmCompartmentData(1);
+                        historyPoint.models[name].bubbleFormationRate = bvmData.bubbleFormationRate;
+                        historyPoint.models[name].bubbleResolutionRate = bvmData.bubbleResolutionRate;
+                    } catch (bvmError) {
+                        console.warn('Error getting BVM(3) bubble parameters:', bvmError);
+                        historyPoint.models[name].bubbleVolume = 0;
+                        historyPoint.models[name].bubbleFormationRate = 0;
+                        historyPoint.models[name].bubbleResolutionRate = 0;
+                    }
+                }
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
                 // Provide default values
@@ -1043,6 +1204,31 @@ class DiveSimulator {
         
         // Update detailed tissue chart
         this.updateDetailedTissueChart();
+        
+        // Update bubble parameters chart
+        this.bubbleChart.data.labels = timeLabels;
+        
+        // VPM-B Bubble Count (Compartment 1)
+        this.bubbleChart.data.datasets[0].data = this.diveHistory.map(h => 
+            h.models.vpmb && h.models.vpmb.bubbleCount !== undefined ? h.models.vpmb.bubbleCount : 0
+        );
+        
+        // VPM-B Critical Radius (nanometers)
+        this.bubbleChart.data.datasets[1].data = this.diveHistory.map(h => 
+            h.models.vpmb && h.models.vpmb.criticalRadius !== undefined ? h.models.vpmb.criticalRadius : 1000
+        );
+        
+        // BVM(3) Bubble Volume (Compartment 1)
+        this.bubbleChart.data.datasets[2].data = this.diveHistory.map(h => 
+            h.models.bvm && h.models.bvm.bubbleVolume !== undefined ? h.models.bvm.bubbleVolume : 0
+        );
+        
+        // BVM(3) Formation Rate
+        this.bubbleChart.data.datasets[3].data = this.diveHistory.map(h => 
+            h.models.bvm && h.models.bvm.bubbleFormationRate !== undefined ? h.models.bvm.bubbleFormationRate : 0
+        );
+        
+        this.bubbleChart.update('none');
         
         console.log(`Updated charts with ${this.diveHistory.length} data points`);
     }

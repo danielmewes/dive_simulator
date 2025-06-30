@@ -315,6 +315,48 @@
         canAscendDirectly() {
             return this.calculateCeiling() <= 0;
         }
+        
+        // Bubble parameter methods for visualization
+        calculateBubbleCount(compartmentNumber) {
+            if (compartmentNumber < 1 || compartmentNumber > 16) {
+                throw new Error('Compartment number must be between 1 and 16');
+            }
+            
+            const compartment = this.tissueCompartments[compartmentNumber - 1];
+            if (!compartment) return 0;
+            
+            const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+            const supersaturation = Math.max(0, totalLoading - this.currentDiveState.ambientPressure);
+            
+            if (supersaturation <= 0) return 0;
+            
+            // Simplified bubble count calculation based on supersaturation
+            const bubbleCount = supersaturation * 1000 * (1 + this.conservatism * 0.1);
+            return Math.max(0, bubbleCount);
+        }
+        
+        getVpmBCompartmentData(compartmentNumber) {
+            if (compartmentNumber < 1 || compartmentNumber > 16) {
+                throw new Error('Compartment number must be between 1 and 16');
+            }
+            
+            const compartment = this.tissueCompartments[compartmentNumber - 1];
+            if (!compartment) {
+                return {
+                    adjustedCriticalRadius: 1000,
+                    maxCrushingPressure: 1.013,
+                    nitrogenLoading: 0.79,
+                    heliumLoading: 0
+                };
+            }
+            
+            return {
+                adjustedCriticalRadius: compartment.criticalRadius * 1000000000 || 1000, // Convert to nm
+                maxCrushingPressure: compartment.maxCrushingPressure || this.currentDiveState.ambientPressure,
+                nitrogenLoading: compartment.nitrogenLoading,
+                heliumLoading: compartment.heliumLoading
+            };
+        }
     }
     
     // === BVM(3) Model ===
@@ -450,6 +492,47 @@
             }
             
             return Math.min(10, totalRisk); // Cap at 10%
+        }
+        
+        // Bubble parameter methods for visualization
+        calculateBubbleVolume(compartmentNumber) {
+            if (compartmentNumber < 1 || compartmentNumber > 3) {
+                throw new Error('BVM(3) compartment number must be between 1 and 3');
+            }
+            
+            const compartment = this.tissueCompartments[compartmentNumber - 1];
+            if (!compartment) return 0;
+            
+            return compartment.bubbleVolume || 0;
+        }
+        
+        getBvmCompartmentData(compartmentNumber) {
+            if (compartmentNumber < 1 || compartmentNumber > 3) {
+                throw new Error('BVM(3) compartment number must be between 1 and 3');
+            }
+            
+            const compartment = this.tissueCompartments[compartmentNumber - 1];
+            if (!compartment) {
+                return {
+                    bubbleVolume: 0,
+                    bubbleFormationRate: 0,
+                    bubbleResolutionRate: 0,
+                    nitrogenLoading: 0.79,
+                    heliumLoading: 0
+                };
+            }
+            
+            const supersaturation = Math.max(0, 
+                (compartment.nitrogenLoading + compartment.heliumLoading) - this.currentDiveState.ambientPressure
+            );
+            
+            return {
+                bubbleVolume: compartment.bubbleVolume || 0,
+                bubbleFormationRate: supersaturation > 0 ? supersaturation * 0.01 : 0,
+                bubbleResolutionRate: (compartment.bubbleVolume || 0) * 0.1,
+                nitrogenLoading: compartment.nitrogenLoading,
+                heliumLoading: compartment.heliumLoading
+            };
         }
     }
     
