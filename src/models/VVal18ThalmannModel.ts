@@ -359,4 +359,32 @@ export class VVal18ThalmannModel extends DecompressionModel {
       ...newParameters
     };
   }
+
+  /**
+   * Calculate DCS risk as a percentage based on VVal-18 model parameters
+   * Uses gradient factor exceedance and tissue supersaturation
+   * @returns DCS risk as a percentage (0-100)
+   */
+  public calculateDCSRisk(): number {
+    let maxRiskFactor = 0;
+    
+    for (const compartment of this.vval18Compartments) {
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      const gradientFactor = this.interpolateGradientFactor();
+      const allowableGradient = compartment.mValue * gradientFactor * this.parameters.safetyFactor;
+      const maxAllowableLoading = this.currentDiveState.ambientPressure + allowableGradient;
+      
+      // Calculate risk factor as exceedance over allowable loading
+      if (totalLoading > maxAllowableLoading) {
+        const exceedance = totalLoading - maxAllowableLoading;
+        const riskFactor = exceedance / allowableGradient;
+        maxRiskFactor = Math.max(maxRiskFactor, riskFactor);
+      }
+    }
+    
+    // Convert risk factor to percentage, scaling with max DCS risk parameter
+    const riskPercentage = Math.min(100, maxRiskFactor * this.parameters.maxDcsRisk);
+    
+    return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+  }
 }

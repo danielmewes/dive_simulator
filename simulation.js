@@ -817,7 +817,7 @@ class DiveSimulator {
                         (t.nitrogenLoading || 0) + (t.heliumLoading || 0)
                     ),
                     canAscend: model.canAscendDirectly(),
-                    risk: this.calculateDCSRisk(name)
+                    risk: model.calculateDCSRisk ? model.calculateDCSRisk() : 0
                 };
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
@@ -952,7 +952,7 @@ class DiveSimulator {
         );
         this.profileChart.update('none');
         
-        // Update DCS risk chart (timeseries)
+        // Update DCS risk chart using model-specific calculations
         this.riskChart.data.labels = timeLabels;
         
         // Bühlmann risk over time
@@ -984,168 +984,6 @@ class DiveSimulator {
         this.updateDetailedTissueChart();
         
         console.log(`Updated charts with ${this.diveHistory.length} data points`);
-    }
-    
-    calculateDCSRisk(modelName) {
-        const model = this.models[modelName];
-        if (!model) return 0;
-        
-        try {
-            // Use model-specific risk calculations when available
-            if (modelName === 'bvm' && typeof model.calculateTotalDcsRisk === 'function') {
-                // BVM(3) has a sophisticated bubble volume based risk calculation
-                return Math.round(model.calculateTotalDcsRisk() * 10) / 10;
-            }
-            
-            if (modelName === 'vval18') {
-                // VVal-18 uses 3.5% Navy standard - calculate based on supersaturation relative to this
-                const compartments = model.getTissueCompartments();
-                let maxSupersaturationRatio = 0;
-                
-                compartments.forEach(compartment => {
-                    const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
-                    const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
-                    const supersaturation = Math.max(0, totalInert - ambientPressure);
-                    // Normalize to VVal-18's 3.5% standard
-                    const ratio = supersaturation / 3.5;
-                    maxSupersaturationRatio = Math.max(maxSupersaturationRatio, ratio);
-                });
-                
-                const risk = Math.min(10, maxSupersaturationRatio * 3.5);
-                return Math.round(risk * 10) / 10;
-            }
-            
-            // Default calculation for Bühlmann and VPM-B models
-            const compartments = model.getTissueCompartments();
-            let totalSupersaturation = 0;
-            
-            compartments.forEach(compartment => {
-                const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
-                const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
-                const supersaturation = Math.max(0, totalInert - ambientPressure);
-                totalSupersaturation += supersaturation;
-            });
-            
-            // Convert to percentage (simplified formula)
-            const risk = Math.min(10, totalSupersaturation * 2);
-            return Math.round(risk * 10) / 10; // Round to 1 decimal place
-            
-        } catch (error) {
-            console.warn(`Error calculating DCS risk for ${modelName}:`, error);
-            return 0;
-        }
-    }
-    
-    updateDetailedTissueChart() {
-        if (this.diveHistory.length === 0 || !this.detailedTissueChart) {
-            return;
-        }
-        
-        const timeLabels = this.diveHistory.map(h => Math.round(h.time * 10) / 10);
-        this.detailedTissueChart.data.labels = timeLabels;
-        
-        const selectedModel = this.selectedDetailedModel;
-        
-        // Determine the number of compartments for the selected model
-        let compartmentCount = 0;
-        if (this.diveHistory.length > 0 && this.diveHistory[0].models[selectedModel]) {
-            compartmentCount = this.diveHistory[0].models[selectedModel].tissueLoadings.length;
-        }
-        
-        // If we couldn't determine compartment count from history, use model defaults
-        if (compartmentCount === 0) {
-            const modelDefaults = {
-                buhlmann: 16,
-                vpmb: 16,
-                bvm: 3,
-                vval18: 3
-            };
-            compartmentCount = modelDefaults[selectedModel] || 16;
-        }
-        
-        // Rebuild datasets for the current model's compartment count
-        const newDatasets = [];
-        
-        // Create datasets for each tissue compartment
-        for (let i = 0; i < compartmentCount; i++) {
-            newDatasets.push({
-                label: `Compartment ${i + 1}`,
-                data: this.diveHistory.map(h => {
-                    if (!h.models[selectedModel] || !h.models[selectedModel].tissueLoadings) {
-                        return 1.013;
-                    }
-                    return h.models[selectedModel].tissueLoadings[i] || 1.013;
-                }),
-                borderColor: this.compartmentColors[i],
-                backgroundColor: this.compartmentColors[i] + '20',
-                tension: 0.4,
-                pointRadius: 0,
-                borderWidth: 1.5
-            });
-        }
-        
-        // Add ambient pressure line
-        newDatasets.push({
-            label: 'Ambient Pressure',
-            data: this.diveHistory.map(h => h.ambientPressure || 1.013),
-            borderColor: '#ffffff',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderDash: [5, 5],
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-        });
-        
-        // Replace all datasets
-        this.detailedTissueChart.data.datasets = newDatasets;
-        
-        // Update chart title to show selected model
-        const modelNames = {
-            buhlmann: 'Bühlmann ZH-L16C',
-            vpmb: 'VPM-B',
-            bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
-        };
-        this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
-        
-        // Color compartments showing supersaturation differently
-        this.updateCompartmentSupersaturationColors(compartmentCount);
-        
-        this.detailedTissueChart.update('none');
-    }
-    
-    updateCompartmentSupersaturationColors(compartmentCount) {
-        if (this.diveHistory.length === 0 || !compartmentCount) return;
-        
-        const latestHistory = this.diveHistory[this.diveHistory.length - 1];
-        const selectedModel = this.selectedDetailedModel;
-        const ambientPressure = latestHistory.ambientPressure || 1.013;
-        
-        // Supersaturated colors (brighter)
-        const supersaturatedColors = [
-            '#ff0000', '#ff3300', '#ff6600', '#ff9900',
-            '#ffcc00', '#ffff00', '#ccff00', '#99ff00',
-            '#66ff00', '#33ff00', '#00ff33', '#00ff66',
-            '#00ff99', '#00ffcc', '#00ffff', '#00ccff'
-        ];
-        
-        // Check each compartment for supersaturation (only for existing compartments)
-        for (let i = 0; i < compartmentCount; i++) {
-            if (!this.detailedTissueChart.data.datasets[i]) continue; // Safety check
-            
-            const compartmentPressure = latestHistory.models[selectedModel]?.tissueLoadings[i] || 1.013;
-            const isSupersaturated = compartmentPressure > ambientPressure;
-            
-            if (isSupersaturated) {
-                // Use brighter, more saturated colors for supersaturated compartments
-                this.detailedTissueChart.data.datasets[i].borderColor = supersaturatedColors[i];
-                this.detailedTissueChart.data.datasets[i].borderWidth = 2.5;
-            } else {
-                // Use original muted colors for normal compartments
-                this.detailedTissueChart.data.datasets[i].borderColor = this.compartmentColors[i];
-                this.detailedTissueChart.data.datasets[i].borderWidth = 1.5;
-            }
-        }
     }
 }
 
