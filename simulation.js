@@ -531,6 +531,8 @@ class DiveSimulator {
             const titleElement = document.querySelector(titleSelector);
             if (titleElement) {
                 titleElement.textContent = titleText;
+            } else {
+                console.warn(`Title element not found: ${titleSelector}`);
             }
         }
         
