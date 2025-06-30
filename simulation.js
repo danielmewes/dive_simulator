@@ -293,6 +293,16 @@ class DiveSimulator {
                         borderColor: '#be185d',
                         backgroundColor: 'rgba(190, 24, 93, 0.1)',
                         tension: 0.4
+                    },
+                    {
+                        label: 'Ambient Pressure',
+                        data: [],
+                        borderColor: '#ffffff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderDash: [5, 5],
+                        tension: 0.1,
+                        pointRadius: 0,
+                        borderWidth: 2
                     }
                 ]
             },
@@ -1154,6 +1164,9 @@ class DiveSimulator {
             }
             return h.models.vval18.tissueLoadings[2];
         });
+        
+        // Ambient pressure overlay
+        this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('none');
         
