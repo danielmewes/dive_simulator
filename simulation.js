@@ -22,6 +22,7 @@ class DiveSimulator {
         this.currentDepth = 0;
         this.diveTime = 0;
         this.currentGasMix = { oxygen: 21, helium: 0 };
+        this.vpmConservatism = 2; // Default VPM conservatism level
         
         this.initializeModels();
         this.initializeEventListeners();
@@ -39,7 +40,7 @@ class DiveSimulator {
         try {
             this.models = {
                 buhlmann: window.DecompressionSimulator.createModel('buhlmann'),
-                vpmb: window.DecompressionSimulator.createModel('vpmb'),
+                vpmb: window.DecompressionSimulator.createModel('vpmb', { conservatism: this.vpmConservatism }),
                 bvm: window.DecompressionSimulator.createModel('bvm'),
                 vval18: window.DecompressionSimulator.createModel('vval18')
             };
@@ -126,6 +127,16 @@ class DiveSimulator {
         // Reset button
         document.getElementById('reset-dive').addEventListener('click', () => {
             this.resetDive();
+        });
+        
+        // VPM conservatism control
+        const vpmConservatismSlider = document.getElementById('vpm-conservatism');
+        const vpmConservatismDisplay = document.getElementById('vpm-conservatism-display');
+        
+        vpmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            vpmConservatismDisplay.textContent = newConservatism;
+            this.updateVpmConservatism(newConservatism);
         });
         
         // Chart tabs
@@ -408,6 +419,42 @@ class DiveSimulator {
         this.updateDisplay();
     }
     
+    updateVpmConservatism(newConservatism) {
+        this.vpmConservatism = newConservatism;
+        
+        // Recreate the VPM-B model with new conservatism
+        const oldModel = this.models.vpmb;
+        this.models.vpmb = window.DecompressionSimulator.createModel('vpmb', { conservatism: newConservatism });
+        
+        // Copy current state from old model to new model
+        if (oldModel) {
+            const currentState = oldModel.getDiveState();
+            this.models.vpmb.updateDiveState(currentState);
+            
+            // Copy tissue loadings if possible
+            const oldCompartments = oldModel.getTissueCompartments();
+            const newCompartments = this.models.vpmb.getTissueCompartments();
+            
+            if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
+                for (let i = 0; i < oldCompartments.length; i++) {
+                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
+                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
+                    if (oldCompartments[i].maxCrushingPressure !== undefined) {
+                        newCompartments[i].maxCrushingPressure = oldCompartments[i].maxCrushingPressure;
+                    }
+                }
+            }
+        }
+        
+        // Update VPM title to show conservatism level
+        document.getElementById('vpmb-title').textContent = `VPM-B+${newConservatism}`;
+        document.getElementById('vpmb-schedule-title').textContent = `VPM-B+${newConservatism}`;
+        
+        this.updateDisplay();
+        this.updateCharts();
+        console.log(`VPM-B conservatism updated to ${newConservatism}`);
+    }
+    
     startSimulation() {
         this.isRunning = true;
         this.intervalId = setInterval(() => {
@@ -440,7 +487,10 @@ class DiveSimulator {
         document.getElementById('oxygen').value = 21;
         document.getElementById('helium').value = 0;
         document.getElementById('nitrogen').value = 79;
+        document.getElementById('vpm-conservatism').value = 2;
+        document.getElementById('vpm-conservatism-display').textContent = '2';
         this.currentGasMix = { oxygen: 21, helium: 0 };
+        this.vpmConservatism = 2;
         
         // Clear charts
         this.tissueChart.data.labels = [];

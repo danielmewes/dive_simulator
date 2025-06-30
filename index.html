@@ -81,6 +81,21 @@
                         </div>
                     </div>
 
+                    <!-- VPM-B Conservatism Control -->
+                    <div class="control-group">
+                        <h4>⚙️ VPM-B Settings</h4>
+                        <div class="vpm-controls">
+                            <div class="conservatism-control">
+                                <label for="vpm-conservatism">Conservatism Level: <span id="vpm-conservatism-display">2</span></label>
+                                <input type="range" id="vpm-conservatism" min="0" max="5" value="2" step="1">
+                                <div class="conservatism-labels">
+                                    <span>0 (Aggressive)</span>
+                                    <span>5 (Conservative)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Reset Controls -->
                     <div class="control-group">
                         <button id="reset-dive" class="reset-button">🔄 Reset Dive</button>
@@ -125,7 +140,7 @@
                             </div>
                         </div>
                         <div class="model-result" id="vpmb-result">
-                            <h4>VPM-B</h4>
+                            <h4 id="vpmb-title">VPM-B+2</h4>
                             <div class="result-values">
                                 <span class="ceiling">Ceiling: <strong id="vpmb-ceiling">0m</strong></span>
                                 <span class="tts">TTS: <strong id="vpmb-tts">0 min</strong></span>
@@ -177,7 +192,7 @@
                             </div>
                         </div>
                         <div class="schedule-column">
-                            <h4>VPM-B</h4>
+                            <h4 id="vpmb-schedule-title">VPM-B+2</h4>
                             <div id="vpmb-schedule" class="schedule-list">
                                 <div class="no-deco">No decompression required</div>
                             </div>

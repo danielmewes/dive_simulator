@@ -267,6 +267,61 @@ header h1 {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* VPM Conservatism Control */
+.vpm-controls {
+    margin-top: 1rem;
+}
+
+.conservatism-control {
+    margin-bottom: 1rem;
+}
+
+#vpm-conservatism {
+    width: 100%;
+    margin: 0.5rem 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    height: 8px;
+    outline: none;
+}
+
+#vpm-conservatism::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #34d399;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#vpm-conservatism::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #34d399;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#vpm-conservatism-display {
+    color: #34d399;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.conservatism-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+}
+
 .model-selection input[type="checkbox"] {
     width: 16px;
     height: 16px;
