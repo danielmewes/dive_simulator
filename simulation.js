@@ -936,9 +936,12 @@ class DiveSimulator {
                 gradientFactorHigh: newGfHigh,
                 conservatism: this.rgbmConservatism
             },
-            '#rgbm-result h4',
+            '#rgbm-title',
             `RGBM (folded) - GF ${newGfLow}/${newGfHigh}, C${this.rgbmConservatism}`
         );
+        
+        // Also update the schedule title
+        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - GF ${newGfLow}/${newGfHigh}, C${this.rgbmConservatism}`;
         
         console.log(`RGBM gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
@@ -954,9 +957,12 @@ class DiveSimulator {
                 gradientFactorHigh: this.rgbmGradientFactors.high,
                 conservatism: newConservatism
             },
-            '#rgbm-result h4',
+            '#rgbm-title',
             `RGBM (folded) - GF ${this.rgbmGradientFactors.low}/${this.rgbmGradientFactors.high}, C${newConservatism}`
         );
+        
+        // Also update the schedule title
+        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - GF ${this.rgbmGradientFactors.low}/${this.rgbmGradientFactors.high}, C${newConservatism}`;
         
         console.log(`RGBM conservatism updated to ${newConservatism}`);
     }
@@ -1123,12 +1129,24 @@ class DiveSimulator {
         document.getElementById('unified-vval18-gf-high-display').textContent = '85';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        this.rgbmGradientFactors = { low: 25, high: 85 };
+        this.rgbmConservatism = 2;
+        
+        // Reset RGBM controls
+        document.getElementById('unified-rgbm-gf-low').value = 25;
+        document.getElementById('unified-rgbm-gf-low-display').textContent = '25';
+        document.getElementById('unified-rgbm-gf-high').value = 85;
+        document.getElementById('unified-rgbm-gf-high-display').textContent = '85';
+        document.getElementById('unified-rgbm-conservatism').value = 2;
+        document.getElementById('unified-rgbm-conservatism-display').textContent = '2';
         
         // Reset model titles to default
         document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
+        document.getElementById('rgbm-title').textContent = 'RGBM (folded)';
+        document.getElementById('rgbm-schedule-title').textContent = 'RGBM (folded)';
         
         // Reset zoom to full view
         this.zoomMode = 'full';
