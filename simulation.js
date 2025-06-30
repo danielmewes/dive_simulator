@@ -140,51 +140,8 @@ class DiveSimulator {
             this.resetDive();
         });
         
-        // VPM conservatism control
-        const vpmConservatismSlider = document.getElementById('vpm-conservatism');
-        const vpmConservatismDisplay = document.getElementById('vpm-conservatism-display');
-        
-        vpmConservatismSlider.addEventListener('input', (e) => {
-            const newConservatism = parseInt(e.target.value);
-            vpmConservatismDisplay.textContent = newConservatism;
-            this.updateVpmConservatism(newConservatism);
-        });
-        
-        // Bühlmann gradient factor controls
-        const buhlmannGfLowSlider = document.getElementById('buhlmann-gf-low');
-        const buhlmannGfLowDisplay = document.getElementById('buhlmann-gf-low-display');
-        const buhlmannGfHighSlider = document.getElementById('buhlmann-gf-high');
-        const buhlmannGfHighDisplay = document.getElementById('buhlmann-gf-high-display');
-        
-        buhlmannGfLowSlider.addEventListener('input', (e) => {
-            const newGfLow = parseInt(e.target.value);
-            buhlmannGfLowDisplay.textContent = newGfLow;
-            this.updateBuhlmannGradientFactors(newGfLow, this.buhlmannGradientFactors.high);
-        });
-        
-        buhlmannGfHighSlider.addEventListener('input', (e) => {
-            const newGfHigh = parseInt(e.target.value);
-            buhlmannGfHighDisplay.textContent = newGfHigh;
-            this.updateBuhlmannGradientFactors(this.buhlmannGradientFactors.low, newGfHigh);
-        });
-        
-        // VVal-18 gradient factor controls
-        const vval18GfLowSlider = document.getElementById('vval18-gf-low');
-        const vval18GfLowDisplay = document.getElementById('vval18-gf-low-display');
-        const vval18GfHighSlider = document.getElementById('vval18-gf-high');
-        const vval18GfHighDisplay = document.getElementById('vval18-gf-high-display');
-        
-        vval18GfLowSlider.addEventListener('input', (e) => {
-            const newGfLow = parseInt(e.target.value);
-            vval18GfLowDisplay.textContent = newGfLow;
-            this.updateVval18GradientFactors(newGfLow, this.vval18GradientFactors.high);
-        });
-        
-        vval18GfHighSlider.addEventListener('input', (e) => {
-            const newGfHigh = parseInt(e.target.value);
-            vval18GfHighDisplay.textContent = newGfHigh;
-            this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
-        });
+        // Unified model settings controls
+        this.setupUnifiedModelSettings();
         
         // Chart tabs
         document.querySelectorAll('.chart-tab').forEach(tab => {
@@ -691,6 +648,91 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
+    setupUnifiedModelSettings() {
+        // Model selector dropdown
+        const modelSelector = document.getElementById('model-settings-selector');
+        
+        // Model settings panels
+        const vpmBPanel = document.getElementById('vpmb-settings');
+        const buhlmannPanel = document.getElementById('buhlmann-settings');
+        const vval18Panel = document.getElementById('vval18-settings');
+        
+        // Function to show/hide model settings panels based on selection
+        const showModelSettings = (selectedModel) => {
+            // Hide all panels first
+            vpmBPanel.style.display = 'none';
+            buhlmannPanel.style.display = 'none';
+            vval18Panel.style.display = 'none';
+            
+            // Show the selected panel
+            switch(selectedModel) {
+                case 'vpmb':
+                    vpmBPanel.style.display = 'block';
+                    break;
+                case 'buhlmann':
+                    buhlmannPanel.style.display = 'block';
+                    break;
+                case 'vval18':
+                    vval18Panel.style.display = 'block';
+                    break;
+            }
+        };
+        
+        // Model selector change event
+        modelSelector.addEventListener('change', (e) => {
+            showModelSettings(e.target.value);
+        });
+        
+        // Initialize with first option (VPM-B)
+        showModelSettings('vpmb');
+        
+        // VPM-B controls
+        const vpmConservatismSlider = document.getElementById('unified-vpm-conservatism');
+        const vpmConservatismDisplay = document.getElementById('unified-vpm-conservatism-display');
+        
+        vpmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            vpmConservatismDisplay.textContent = newConservatism;
+            this.updateVpmConservatism(newConservatism);
+        });
+        
+        // Bühlmann gradient factor controls
+        const buhlmannGfLowSlider = document.getElementById('unified-buhlmann-gf-low');
+        const buhlmannGfLowDisplay = document.getElementById('unified-buhlmann-gf-low-display');
+        const buhlmannGfHighSlider = document.getElementById('unified-buhlmann-gf-high');
+        const buhlmannGfHighDisplay = document.getElementById('unified-buhlmann-gf-high-display');
+        
+        buhlmannGfLowSlider.addEventListener('input', (e) => {
+            const newGfLow = parseInt(e.target.value);
+            buhlmannGfLowDisplay.textContent = newGfLow;
+            this.updateBuhlmannGradientFactors(newGfLow, this.buhlmannGradientFactors.high);
+        });
+        
+        buhlmannGfHighSlider.addEventListener('input', (e) => {
+            const newGfHigh = parseInt(e.target.value);
+            buhlmannGfHighDisplay.textContent = newGfHigh;
+            this.updateBuhlmannGradientFactors(this.buhlmannGradientFactors.low, newGfHigh);
+        });
+        
+        // VVal-18 gradient factor controls
+        const vval18GfLowSlider = document.getElementById('unified-vval18-gf-low');
+        const vval18GfLowDisplay = document.getElementById('unified-vval18-gf-low-display');
+        const vval18GfHighSlider = document.getElementById('unified-vval18-gf-high');
+        const vval18GfHighDisplay = document.getElementById('unified-vval18-gf-high-display');
+        
+        vval18GfLowSlider.addEventListener('input', (e) => {
+            const newGfLow = parseInt(e.target.value);
+            vval18GfLowDisplay.textContent = newGfLow;
+            this.updateVval18GradientFactors(newGfLow, this.vval18GradientFactors.high);
+        });
+        
+        vval18GfHighSlider.addEventListener('input', (e) => {
+            const newGfHigh = parseInt(e.target.value);
+            vval18GfHighDisplay.textContent = newGfHigh;
+            this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
+        });
+    }
+    
     startSimulation() {
         this.isRunning = true;
         this.intervalId = setInterval(() => {
@@ -721,20 +763,20 @@ class DiveSimulator {
         document.getElementById('oxygen').value = 21;
         document.getElementById('helium').value = 0;
         document.getElementById('nitrogen').value = 79;
-        document.getElementById('vpm-conservatism').value = 2;
-        document.getElementById('vpm-conservatism-display').textContent = '2';
         this.currentGasMix = { oxygen: 21, helium: 0 };
         this.vpmConservatism = 2;
         
-        // Reset gradient factor controls
-        document.getElementById('buhlmann-gf-low').value = 30;
-        document.getElementById('buhlmann-gf-low-display').textContent = '30';
-        document.getElementById('buhlmann-gf-high').value = 85;
-        document.getElementById('buhlmann-gf-high-display').textContent = '85';
-        document.getElementById('vval18-gf-low').value = 30;
-        document.getElementById('vval18-gf-low-display').textContent = '30';
-        document.getElementById('vval18-gf-high').value = 85;
-        document.getElementById('vval18-gf-high-display').textContent = '85';
+        // Reset unified model settings controls
+        document.getElementById('unified-vpm-conservatism').value = 2;
+        document.getElementById('unified-vpm-conservatism-display').textContent = '2';
+        document.getElementById('unified-buhlmann-gf-low').value = 30;
+        document.getElementById('unified-buhlmann-gf-low-display').textContent = '30';
+        document.getElementById('unified-buhlmann-gf-high').value = 85;
+        document.getElementById('unified-buhlmann-gf-high-display').textContent = '85';
+        document.getElementById('unified-vval18-gf-low').value = 30;
+        document.getElementById('unified-vval18-gf-low-display').textContent = '30';
+        document.getElementById('unified-vval18-gf-high').value = 85;
+        document.getElementById('unified-vval18-gf-high-display').textContent = '85';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
         
