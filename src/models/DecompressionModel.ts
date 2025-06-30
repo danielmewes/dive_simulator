@@ -104,6 +104,13 @@ export abstract class DecompressionModel {
   public abstract getModelName(): string;
 
   /**
+   * Calculate the current DCS (Decompression Sickness) risk as a percentage
+   * Each model implements its own risk calculation based on the literature
+   * @returns DCS risk as a percentage (0-100)
+   */
+  public abstract calculateDCSRisk(): number;
+
+  /**
    * Update the current dive state
    * @param newState New dive state
    */

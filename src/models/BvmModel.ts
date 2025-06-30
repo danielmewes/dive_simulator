@@ -363,6 +363,22 @@ export class BvmModel extends DecompressionModel {
   }
 
   /**
+   * Calculate DCS risk as a percentage based on bubble volumes
+   * This implements the literature-based BVM(3) risk calculation
+   * @returns DCS risk as a percentage (0-100)
+   */
+  public calculateDCSRisk(): number {
+    const totalRisk = this.calculateTotalDcsRisk();
+    
+    // Convert the total risk to a percentage (0-100)
+    // The BVM(3) model risk is typically expressed as a fraction
+    // Scale to percentage with a reasonable maximum
+    const riskPercentage = Math.min(100, totalRisk * 100);
+    
+    return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+  }
+
+  /**
    * Reset all compartments to surface equilibrium
    */
   public override resetToSurface(): void {

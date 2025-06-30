@@ -365,4 +365,40 @@ export class VpmBModel extends DecompressionModel {
     const depthDifference = depth - ceiling;
     return Math.max(1, Math.min(30, depthDifference * 2)); // 1-30 minutes
   }
+
+  /**
+   * Calculate DCS risk as a percentage based on VPM-B bubble mechanics
+   * Uses bubble counts and supersaturation ratios across all compartments
+   * @returns DCS risk as a percentage (0-100)
+   */
+  public calculateDCSRisk(): number {
+    let maxRiskFactor = 0;
+    
+    for (let i = 1; i <= 16; i++) {
+      const compartment = this.vpmBCompartments[i - 1];
+      if (!compartment) continue;
+      
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      const ambientPressure = this.currentDiveState.ambientPressure;
+      const supersaturation = Math.max(0, totalLoading - ambientPressure);
+      
+      if (supersaturation > 0) {
+        // Calculate risk based on bubble count and allowable supersaturation
+        const allowableSupersaturation = this.calculateAllowableSupersaturation(compartment);
+        const bubbleCount = this.calculateBubbleCount(i);
+        
+        // Risk factor combines supersaturation ratio and bubble density
+        const supersaturationRatio = supersaturation / Math.max(allowableSupersaturation, 0.01);
+        const bubbleRiskFactor = Math.log10(Math.max(bubbleCount, 1)) / 10; // Log scale for bubble count
+        
+        const compartmentRisk = supersaturationRatio + bubbleRiskFactor;
+        maxRiskFactor = Math.max(maxRiskFactor, compartmentRisk);
+      }
+    }
+    
+    // Convert to percentage with VPM-B specific scaling
+    const riskPercentage = Math.min(100, maxRiskFactor * 30);
+    
+    return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+  }
 }

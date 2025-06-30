@@ -708,38 +708,18 @@ class DiveSimulator {
         );
         this.profileChart.update('none');
         
-        // Update DCS risk chart
+        // Update DCS risk chart using model-specific calculations
         const currentRisks = [
-            this.calculateDCSRisk('buhlmann'),
-            this.calculateDCSRisk('vpmb'),
-            this.calculateDCSRisk('bvm'),
-            this.calculateDCSRisk('vval18')
+            this.models.buhlmann ? this.models.buhlmann.calculateDCSRisk() : 0,
+            this.models.vpmb ? this.models.vpmb.calculateDCSRisk() : 0,
+            this.models.bvm ? this.models.bvm.calculateDCSRisk() : 0,
+            this.models.vval18 ? this.models.vval18.calculateDCSRisk() : 0
         ];
         
         this.riskChart.data.datasets[0].data = currentRisks;
         this.riskChart.update('none');
         
         console.log(`Updated charts with ${this.diveHistory.length} data points`);
-    }
-    
-    calculateDCSRisk(modelName) {
-        const model = this.models[modelName];
-        if (!model) return 0;
-        
-        // Simplified DCS risk calculation based on tissue supersaturation
-        const compartments = model.getTissueCompartments();
-        let totalSupersaturation = 0;
-        
-        compartments.forEach(compartment => {
-            const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
-            const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
-            const supersaturation = Math.max(0, totalInert - ambientPressure);
-            totalSupersaturation += supersaturation;
-        });
-        
-        // Convert to percentage (simplified formula)
-        const risk = Math.min(10, totalSupersaturation * 2);
-        return Math.round(risk * 10) / 10; // Round to 1 decimal place
     }
 }
 
