@@ -130,7 +130,19 @@ class DiveSimulator {
                 
                 e.target.classList.add('active');
                 const chartId = e.target.dataset.chart + '-chart';
-                document.getElementById(chartId).classList.add('active');
+                const activeChart = document.getElementById(chartId);
+                activeChart.classList.add('active');
+                
+                // Resize the Chart.js instance when it becomes visible
+                setTimeout(() => {
+                    if (chartId === 'tissue-loading-chart' && this.tissueChart) {
+                        this.tissueChart.resize();
+                    } else if (chartId === 'dive-profile-chart' && this.profileChart) {
+                        this.profileChart.resize();
+                    } else if (chartId === 'dcs-risk-chart' && this.riskChart) {
+                        this.riskChart.resize();
+                    }
+                }, 100); // Small delay to ensure the visibility transition completes
             });
         });
     }
