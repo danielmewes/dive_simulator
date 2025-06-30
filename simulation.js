@@ -2314,7 +2314,8 @@ class DiveSimulator {
                 vval18: 3,
                 rgbm: 16,
                 tbdm: 16,
-                nmri98: 3
+                nmri98: 3,
+                hills: 16
             };
             compartmentCount = modelDefaults[selectedModel] || 16;
         }
