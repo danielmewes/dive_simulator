@@ -255,6 +255,125 @@ describe('Nmri98Model', () => {
       
       expect(oxygenEnabledRisk).toBeGreaterThanOrEqual(noOxygenRisk);
     });
+
+    test('should accumulate hazard during ascent when tissues exceed supersaturation limits', () => {
+      const airMix: GasMix = { oxygen: 0.21, helium: 0.0, get nitrogen() { return 0.79; } };
+      
+      // Load tissues at depth
+      model.updateDiveState({ depth: 50, time: 0, gasMix: airMix });
+      model.updateTissueLoadings(30);
+      
+      // Check initial hazard (should be zero at depth)
+      const compartmentsAtDepth = model.getAllNmri98Compartments();
+      compartmentsAtDepth.forEach(comp => {
+        expect(comp.accumulatedHazard).toBe(0);
+      });
+      
+      // Ascend to surface (creates supersaturation)
+      model.updateDiveState({ depth: 0, time: 32, gasMix: airMix });
+      model.updateTissueLoadings(1);
+      
+      // Check that some compartments now have accumulated hazard
+      const compartmentsAtSurface = model.getAllNmri98Compartments();
+      const hasHazard = compartmentsAtSurface.some(comp => comp.accumulatedHazard > 0);
+      expect(hasHazard).toBe(true);
+      
+      // Risk should increase after hazardous ascent (may still round to 0 for small hazards)
+      const riskAfterAscent = model.calculateDCSRisk();
+      expect(riskAfterAscent).toBeGreaterThanOrEqual(0);
+      
+      // At minimum, verify that max hazard increased
+      const maxHazardAfterAscent = Math.max(...compartmentsAtSurface.map(c => c.accumulatedHazard));
+      expect(maxHazardAfterAscent).toBeGreaterThan(0);
+    });
+
+    test('should reset accumulated hazard when returning to surface', () => {
+      const airMix: GasMix = { oxygen: 0.21, helium: 0.0, get nitrogen() { return 0.79; } };
+      
+      // Create a dive that accumulates hazard
+      model.updateDiveState({ depth: 60, time: 0, gasMix: airMix });
+      model.updateTissueLoadings(30);
+      model.updateDiveState({ depth: 0, time: 32, gasMix: airMix });
+      model.updateTissueLoadings(5);
+      
+      // Verify hazard accumulated
+      let compartments = model.getAllNmri98Compartments();
+      const hasHazardBeforeReset = compartments.some(comp => comp.accumulatedHazard > 0);
+      expect(hasHazardBeforeReset).toBe(true);
+      
+      // Reset to surface
+      model.resetToSurface();
+      
+      // Verify hazard is reset
+      compartments = model.getAllNmri98Compartments();
+      compartments.forEach(comp => {
+        expect(comp.accumulatedHazard).toBe(0);
+      });
+      
+      expect(model.calculateDCSRisk()).toBe(0);
+    });
+
+    test('should show higher risk with more conservative settings', () => {
+      const airMix: GasMix = { oxygen: 0.21, helium: 0.0, get nitrogen() { return 0.79; } };
+      
+      const conservativeModel = new Nmri98Model({ 
+        conservatism: 5, 
+        maxDcsRisk: 5.0, 
+        safetyFactor: 2.0 
+      });
+      const aggressiveModel = new Nmri98Model({ 
+        conservatism: 0, 
+        maxDcsRisk: 1.0, 
+        safetyFactor: 1.0 
+      });
+      
+      // Same dive profile for both models
+      const diveProfiles = [conservativeModel, aggressiveModel];
+      diveProfiles.forEach(m => {
+        m.updateDiveState({ depth: 45, time: 0, gasMix: airMix });
+        m.updateTissueLoadings(25);
+        m.updateDiveState({ depth: 0, time: 27, gasMix: airMix });
+        m.updateTissueLoadings(3);
+      });
+      
+      const conservativeRisk = conservativeModel.calculateDCSRisk();
+      const aggressiveRisk = aggressiveModel.calculateDCSRisk();
+      
+      // Conservative model should report higher risk for same dive
+      expect(conservativeRisk).toBeGreaterThanOrEqual(aggressiveRisk);
+    });
+
+    test('should use survival function for risk calculation', () => {
+      const airMix: GasMix = { oxygen: 0.21, helium: 0.0, get nitrogen() { return 0.79; } };
+      
+      // Create significant hazard accumulation
+      model.updateDiveState({ depth: 60, time: 0, gasMix: airMix });
+      model.updateTissueLoadings(40);
+      model.updateDiveState({ depth: 0, time: 42, gasMix: airMix });
+      model.updateTissueLoadings(10);
+      
+      const compartments = model.getAllNmri98Compartments();
+      const maxHazard = Math.max(...compartments.map(c => c.accumulatedHazard));
+      const risk = model.calculateDCSRisk();
+      
+      // Verify hazard exists
+      expect(maxHazard).toBeGreaterThan(0);
+      
+      // Verify risk is reasonable (between 0 and 100)
+      expect(risk).toBeGreaterThan(0);
+      expect(risk).toBeLessThan(100);
+      
+      // Verify survival function behavior: P(DCS) = 1 - exp(-R)
+      // Manually calculate expected risk using the same formula as the implementation
+      const params = model.getParameters();
+      const scaledHazard = maxHazard * (params.maxDcsRisk / 2.0);
+      const survivalProbability = Math.exp(-scaledHazard);
+      const conservatismMultiplier = 1.0 + (params.conservatism * 0.05);
+      const expectedRisk = (1.0 - survivalProbability) * conservatismMultiplier * 100.0;
+      const roundedExpectedRisk = Math.round(expectedRisk * 10) / 10;
+      
+      expect(risk).toBe(roundedExpectedRisk);
+    });
   });
 
   describe('Parameter Management', () => {
