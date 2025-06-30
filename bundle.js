@@ -493,7 +493,8 @@
             }
             
             return Math.min(10, totalRisk); // Cap at 10%
-=======
+        }
+        
         // Bubble parameter methods for visualization
         calculateBubbleVolume(compartmentNumber) {
             if (compartmentNumber < 1 || compartmentNumber > 3) {
