@@ -72,7 +72,6 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         safetyFactor: options.safetyFactor || 1.2,
         enableOxygenTracking: options.enableOxygenTracking !== false
       });
-      break;
     case 'hills':
       return new HillsModel({
         conservatismFactor: options.conservatismFactor || 1.0,
@@ -80,7 +79,6 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         metabolicRate: options.metabolicRate || 1.2,
         perfusionMultiplier: options.perfusionMultiplier || 1.0
       });
-      break;
     default:
       throw new Error('Unknown model type: ' + type);
   }
