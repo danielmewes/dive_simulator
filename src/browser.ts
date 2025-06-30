@@ -9,6 +9,9 @@ import { BuhlmannModel } from './models/BuhlmannModel';
 import { VpmBModel } from './models/VpmBModel';
 import { BvmModel } from './models/BvmModel';
 import { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
+import { RgbmFoldedModel } from './models/RgbmFoldedModel';
+import { TbdmModel } from './models/TbdmModel';
+import { Nmri98Model } from './models/Nmri98Model';
 
 // Create global namespace
 declare global {
@@ -26,6 +29,9 @@ window.DecompressionSimulator.BuhlmannModel = BuhlmannModel;
 window.DecompressionSimulator.VpmBModel = VpmBModel;
 window.DecompressionSimulator.BvmModel = BvmModel;
 window.DecompressionSimulator.VVal18ThalmannModel = VVal18ThalmannModel;
+window.DecompressionSimulator.RgbmFoldedModel = RgbmFoldedModel;
+window.DecompressionSimulator.TbdmModel = TbdmModel;
+window.DecompressionSimulator.Nmri98Model = Nmri98Model;
 
 // Helper function to create models (maintains compatibility with existing simulation.js)
 window.DecompressionSimulator.createModel = function(type: string, options: any = {}) {
@@ -47,6 +53,22 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         maxDcsRisk: options.dcsRiskPercent || 2.3,
         gradientFactorLow: options.gradientFactorLow || 0.30,
         gradientFactorHigh: options.gradientFactorHigh || 0.85
+      });
+    case 'rgbm':
+      return new RgbmFoldedModel({
+        conservatism: options.conservatism || 2
+      });
+    case 'tbdm':
+      return new TbdmModel({
+        conservatismFactor: options.conservatismFactor || 1.0,
+        bodyTemperature: options.bodyTemperature || 37.0
+      });
+    case 'nmri98':
+      return new Nmri98Model({
+        conservatism: options.conservatism || 3,
+        maxDcsRisk: options.maxDcsRisk || 2.0,
+        safetyFactor: options.safetyFactor || 1.2,
+        enableOxygenTracking: options.enableOxygenTracking !== false
       });
     default:
       throw new Error('Unknown model type: ' + type);
