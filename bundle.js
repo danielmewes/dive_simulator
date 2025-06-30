@@ -79,6 +79,19 @@
         canAscendDirectly() {
             throw new Error('canAscendDirectly must be implemented by subclass');
         }
+        
+        // Static utility method for gradient factor interpolation
+        static interpolateGradientFactor(depth, gradientFactorLow, gradientFactorHigh) {
+            // Linear interpolation between GF Low and GF High
+            // GF Low applies at first deco stop, GF High at surface
+            const firstDecoDepth = 3; // Assuming 3m first deco stop
+            if (depth >= firstDecoDepth) {
+                return gradientFactorLow;
+            } else {
+                const ratio = depth / firstDecoDepth;
+                return gradientFactorHigh + ratio * (gradientFactorLow - gradientFactorHigh);
+            }
+        }
     }
     
     // === Bühlmann ZH-L16C Model ===
@@ -160,15 +173,9 @@
         }
         
         calculateGradientFactorAtDepth(depth) {
-            // Linear interpolation between GF Low and GF High
-            // GF Low applies at first deco stop, GF High at surface
-            const firstDecoDepth = 3; // Assuming 3m first deco stop
-            if (depth >= firstDecoDepth) {
-                return this.gradientFactorLow;
-            } else {
-                const ratio = depth / firstDecoDepth;
-                return this.gradientFactorHigh + ratio * (this.gradientFactorLow - this.gradientFactorHigh);
-            }
+            return DecompressionModel.interpolateGradientFactor(
+                depth, this.gradientFactorLow, this.gradientFactorHigh
+            );
         }
         
         calculateCeiling() {
@@ -511,15 +518,9 @@
         }
         
         calculateGradientFactorAtDepth(depth) {
-            // Linear interpolation between GF Low and GF High
-            // GF Low applies at first deco stop, GF High at surface
-            const firstDecoDepth = 3; // Assuming 3m first deco stop
-            if (depth >= firstDecoDepth) {
-                return this.gradientFactorLow;
-            } else {
-                const ratio = depth / firstDecoDepth;
-                return this.gradientFactorHigh + ratio * (this.gradientFactorLow - this.gradientFactorHigh);
-            }
+            return DecompressionModel.interpolateGradientFactor(
+                depth, this.gradientFactorLow, this.gradientFactorHigh
+            );
         }
         
         calculateCeiling() {
