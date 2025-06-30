@@ -34,7 +34,11 @@ try {
   console.log('✅ RGBM model correctly has no gradient factors');
   
   // Test dive simulation
-  rgbmModel.updateDiveState(30, 600, { oxygen: 21, helium: 0 }); // 30m for 10 minutes
+  rgbmModel.updateDiveState({ 
+    depth: 30, 
+    time: 600, 
+    gasMix: { oxygen: 21, helium: 0 } 
+  }); // 30m for 10 minutes
   
   const ceiling = rgbmModel.calculateCeiling();
   console.log('Ceiling at 30m for 10min:', Math.round(ceiling), 'm');

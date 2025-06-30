@@ -1082,10 +1082,6 @@
             return this.totalBubbleVolume;
         }
         
-        getRgbmSettings() {
-            return { ...this.settings };
-        }
-        
         setRepetitiveDiveParams(diveCount, surfaceTimeHours) {
             this.diveCount = Math.max(1, diveCount);
             this.lastSurfaceTime = Math.max(0, surfaceTimeHours);
