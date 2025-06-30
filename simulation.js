@@ -1408,7 +1408,7 @@ class DiveSimulator {
             const totalTime = stops.reduce((sum, stop) => sum + stop.time, 0);
             
             // Update ceiling and TTS
-            document.getElementById(`${name}-ceiling`).textContent = `${ceiling}m`;
+            document.getElementById(`${name}-ceiling`).textContent = `${Math.round(ceiling)}m`;
             document.getElementById(`${name}-tts`).textContent = totalTime > 0 ? `${Math.round(totalTime)} min` : '0 min';
             
             // Update status
