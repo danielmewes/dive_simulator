@@ -12,6 +12,7 @@ import { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
 import { RgbmFoldedModel } from './models/RgbmFoldedModel';
 import { TbdmModel } from './models/TbdmModel';
 import { Nmri98Model } from './models/Nmri98Model';
+import { HillsModel } from './models/HillsModel';
 
 // Create global namespace
 declare global {
@@ -32,6 +33,7 @@ window.DecompressionSimulator.VVal18ThalmannModel = VVal18ThalmannModel;
 window.DecompressionSimulator.RgbmFoldedModel = RgbmFoldedModel;
 window.DecompressionSimulator.TbdmModel = TbdmModel;
 window.DecompressionSimulator.Nmri98Model = Nmri98Model;
+window.DecompressionSimulator.HillsModel = HillsModel;
 
 // Helper function to create models (maintains compatibility with existing simulation.js)
 window.DecompressionSimulator.createModel = function(type: string, options: any = {}) {
@@ -69,6 +71,13 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         maxDcsRisk: options.maxDcsRisk || 2.0,
         safetyFactor: options.safetyFactor || 1.2,
         enableOxygenTracking: options.enableOxygenTracking !== false
+      });
+    case 'hills':
+      return new HillsModel({
+        conservatismFactor: options.conservatismFactor || 1.0,
+        coreTemperature: options.coreTemperature || 37.0,
+        metabolicRate: options.metabolicRate || 1.2,
+        perfusionMultiplier: options.perfusionMultiplier || 1.0
       });
     default:
       throw new Error('Unknown model type: ' + type);

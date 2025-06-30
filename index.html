@@ -97,6 +97,7 @@
                             <label><input type="checkbox" id="model-rgbm" checked> RGBM (folded)</label>
                             <label><input type="checkbox" id="model-tbdm" checked> TBDM</label>
                             <label><input type="checkbox" id="model-nmri98" checked> NMRI98 LEM</label>
+                            <label><input type="checkbox" id="model-hills" checked> Thermodynamic (Hills)</label>
                         </div>
                     </div>
 
@@ -114,6 +115,7 @@
                                     <option value="rgbm">RGBM (folded)</option>
                                     <option value="tbdm">TBDM</option>
                                     <option value="nmri98">NMRI98 LEM</option>
+                                    <option value="hills">Thermodynamic (Hills)</option>
                                 </select>
                             </div>
                             
@@ -264,6 +266,37 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Hills (Thermodynamic) Settings -->
+                            <div id="hills-settings" class="model-settings-panel" style="display: none;">
+                                <div class="conservatism-controls">
+                                    <div class="conservatism-control">
+                                        <label for="unified-hills-conservatism">Conservatism Factor: <span id="unified-hills-conservatism-display">1.0</span></label>
+                                        <input type="range" id="unified-hills-conservatism" min="0.5" max="2.0" value="1.0" step="0.1">
+                                        <div class="conservatism-labels">
+                                            <span>0.5 (Aggressive)</span>
+                                            <span>2.0 (Conservative)</span>
+                                        </div>
+                                    </div>
+                                    <div class="hills-parameters">
+                                        <div class="parameter-control">
+                                            <label for="unified-hills-core-temp">Core Temperature: <span id="unified-hills-core-temp-display">37.0</span>°C</label>
+                                            <input type="range" id="unified-hills-core-temp" min="35.0" max="39.0" value="37.0" step="0.1">
+                                        </div>
+                                        <div class="parameter-control">
+                                            <label for="unified-hills-metabolic-rate">Metabolic Rate: <span id="unified-hills-metabolic-rate-display">1.2</span> W/kg</label>
+                                            <input type="range" id="unified-hills-metabolic-rate" min="0.8" max="2.0" value="1.2" step="0.1">
+                                        </div>
+                                        <div class="parameter-control">
+                                            <label for="unified-hills-perfusion">Perfusion Multiplier: <span id="unified-hills-perfusion-display">1.0</span></label>
+                                            <input type="range" id="unified-hills-perfusion" min="0.5" max="2.0" value="1.0" step="0.1">
+                                        </div>
+                                        <div class="parameter-description">
+                                            <small>Thermodynamic model considers heat effects, temperature dependencies, and thermal equilibrium in gas dissolution. Temperature and metabolic rate affect tissue gas solubility and bubble nucleation.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -358,6 +391,15 @@
                                 <span class="status" id="nmri98-status">✅ No Deco</span>
                             </div>
                         </div>
+                        
+                        <div class="model-result" id="hills-result">
+                            <h4 id="hills-title">Thermodynamic (Hills)</h4>
+                            <div class="result-values">
+                                <span class="ceiling">Ceiling: <strong id="hills-ceiling">0m</strong></span>
+                                <span class="tts">TTS: <strong id="hills-tts">0 min</strong></span>
+                                <span class="status" id="hills-status">✅ No Deco</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -382,6 +424,7 @@
                             <option value="rgbm">RGBM (folded)</option>
                             <option value="tbdm">TBDM</option>
                             <option value="nmri98">NMRI98 LEM</option>
+                            <option value="hills">Thermodynamic (Hills)</option>
                         </select>
                     </div>
                     
@@ -447,6 +490,12 @@
                         <div class="schedule-column">
                             <h4>NMRI98 LEM</h4>
                             <div id="nmri98-schedule" class="schedule-list">
+                                <div class="no-deco">No decompression required</div>
+                            </div>
+                        </div>
+                        <div class="schedule-column">
+                            <h4 id="hills-schedule-title">Thermodynamic (Hills)</h4>
+                            <div id="hills-schedule" class="schedule-list">
                                 <div class="no-deco">No decompression required</div>
                             </div>
                         </div>

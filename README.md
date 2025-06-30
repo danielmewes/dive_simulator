@@ -6,7 +6,7 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 
 1. **Open the simulator**: Open `index.html` in a modern web browser
 2. **Start diving**: Use the depth slider or buttons to descend
-3. **Monitor models**: Watch all 5 decompression models in real-time
+3. **Monitor models**: Watch all 8 decompression models in real-time
 4. **Switch gases**: Use the gas controls to change breathing mix
 5. **Speed up time**: Use time acceleration for longer dives
 
@@ -70,6 +70,14 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 - Oxygen tracking and toxicity risk assessment
 - Configurable conservatism levels, safety factors, and maximum DCS risk
 - Enhanced decompression modeling with oxygen contribution calculations
+
+### ✅ Thermodynamic Model (Hills)
+- Implementation of Hills' thermodynamic approach to decompression theory
+- 16-compartment tissue model with temperature-dependent gas solubility
+- Considers heat effects, thermal equilibrium, and metabolic influences on gas dissolution
+- Thermodynamic bubble nucleation probability calculations
+- Configurable parameters: conservatism factor, core temperature, metabolic rate, perfusion multiplier
+- Advanced thermal diffusivity modeling for realistic tissue temperature distribution
 
 ## 🎮 Controls Guide
 
@@ -168,7 +176,7 @@ npm run demo        # Interactive model demonstrations
 
 ### Programmatic Usage
 ```typescript
-import { VpmBModel, BuhlmannModel, VVal18ThalmannModel, TbdmModel, Nmri98Model } from './src/models';
+import { VpmBModel, BuhlmannModel, VVal18ThalmannModel, TbdmModel, Nmri98Model, HillsModel } from './src/models';
 
 // Create models with different conservatism settings
 const vpmModel = new VpmBModel(3);
@@ -176,6 +184,7 @@ const buhlmannModel = new BuhlmannModel({ low: 30, high: 85 });
 const vval18Model = new VVal18ThalmannModel({ maxDcsRisk: 2.5 });
 const tbdmModel = new TbdmModel({ conservatismFactor: 1.2, bodyTemperature: 37.0 });
 const nmri98Model = new Nmri98Model({ conservatism: 3, enableOxygenTracking: true });
+const hillsModel = new HillsModel({ conservatismFactor: 1.0, coreTemperature: 37.0, metabolicRate: 1.2 });
 
 // Define gas mix (Trimix 21/35)
 const trimix2135 = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - this.oxygen - this.helium; } };
@@ -188,6 +197,10 @@ vpmModel.updateTissueLoadings(25);
 tbdmModel.updateDiveState({ depth: 30, time: 0, gasMix: trimix2135 });
 tbdmModel.updateTissueLoadings(25);
 
+// Hills thermodynamic model with thermal effects
+hillsModel.updateDiveState({ depth: 30, time: 0, gasMix: trimix2135 });
+hillsModel.updateTissueLoadings(25);
+
 // Calculate decompression requirements
 const ceiling = vpmModel.calculateCeiling();
 const stops = vpmModel.calculateDecompressionStops();
@@ -196,6 +209,11 @@ const canAscend = vpmModel.canAscendDirectly();
 // TBDM-specific calculations
 const tbdmCeiling = tbdmModel.calculateCeiling();
 const tbdmBubbleRisk = tbdmModel.calculateBubbleRisk();
+
+// Hills thermodynamic-specific calculations
+const hillsCeiling = hillsModel.calculateCeiling();
+const hillsThermodynamicRisk = hillsModel.calculateDCSRisk();
+const hillsCompartmentData = hillsModel.getHillsCompartmentData(1); // First compartment thermal data
 ```
 
 ## 🐛 Troubleshooting
@@ -251,6 +269,8 @@ This simulator is designed for educational and research purposes. It should **NE
 - Baker, E.C. (1998). "Understanding M-values"
 - Wienke, B.R. (2003). "Reduced gradient bubble model"
 - Thalmann, E.D. (1985). "Air-N2O2 decompression computer algorithm development"
+- Hills, B.A. (1977). "A thermodynamic and kinetic approach to decompression sickness"
+- Hills, B.A. (1966). "Decompression Sickness: A thermodynamic approach relating to bubble nucleation"
 
 ## 🤝 Contributing
 
