@@ -460,15 +460,15 @@ class DiveSimulator {
                     {
                         label: 'NMRI98 - Fast Tissues',
                         data: [],
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
                         tension: 0.4
                     },
                     {
                         label: 'NMRI98 - Slow Tissues',
                         data: [],
-                        borderColor: '#d97706',
-                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
                         tension: 0.4
                     },
                     {
@@ -582,8 +582,8 @@ class DiveSimulator {
                     {
                         label: 'Ceiling (NMRI98)',
                         data: [],
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
                         borderDash: [10, 5],
                         tension: 0.2,
                         yAxisID: 'depth'
