@@ -588,10 +588,8 @@ class DiveSimulator {
         this.diveHistory = [];
         this.lastHistoryTime = 0;
         
-        // Reset all models
-        Object.values(this.models).forEach(model => {
-            model.resetToSurface();
-        });
+        // Reinitialize all models with default parameters
+        this.initializeModels();
         
         // Reset controls
         document.getElementById('depth-slider').value = 0;
@@ -614,6 +612,12 @@ class DiveSimulator {
         document.getElementById('vval18-gf-high-display').textContent = '85';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        
+        // Reset model titles to default
+        document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
+        document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
+        document.getElementById('vpmb-title').textContent = 'VPM-B+2';
+        document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
         
         // Clear charts
         this.tissueChart.data.labels = [];
