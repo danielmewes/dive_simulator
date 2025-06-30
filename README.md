@@ -56,6 +56,14 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 - Conservative DCS risk assessment with configurable parameters
 - Used as basis for U.S. Navy diving tables
 
+### ✅ TBDM (Tissue-Bubble Diffusion Model) by Gernhardt & Lambertsen
+- Advanced bubble-dynamics decompression model developed for NASA
+- 16-compartment tissue model with integrated bubble nucleation physics
+- Tissue-specific bubble formation and elimination kinetics
+- Temperature and metabolic effects on bubble dynamics
+- Adjustable conservatism factors (0.5-2.0) for mission-specific risk management
+- Originally developed for space suit decompression scenarios
+
 ## 🎮 Controls Guide
 
 ### Depth Management
@@ -153,12 +161,13 @@ npm run demo        # Interactive model demonstrations
 
 ### Programmatic Usage
 ```typescript
-import { VpmBModel, BuhlmannModel, VVal18ThalmannModel } from './src/models';
+import { VpmBModel, BuhlmannModel, VVal18ThalmannModel, TbdmModel } from './src/models';
 
 // Create models with different conservatism settings
 const vpmModel = new VpmBModel(3);
 const buhlmannModel = new BuhlmannModel({ low: 30, high: 85 });
 const vval18Model = new VVal18ThalmannModel({ maxDcsRisk: 2.5 });
+const tbdmModel = new TbdmModel({ conservatismFactor: 1.2, bodyTemperature: 37.0 });
 
 // Define gas mix (Trimix 21/35)
 const trimix2135 = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - this.oxygen - this.helium; } };
@@ -167,10 +176,18 @@ const trimix2135 = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - thi
 vpmModel.updateDiveState({ depth: 30, time: 0, gasMix: trimix2135 });
 vpmModel.updateTissueLoadings(25);
 
+// TBDM with bubble dynamics
+tbdmModel.updateDiveState({ depth: 30, time: 0, gasMix: trimix2135 });
+tbdmModel.updateTissueLoadings(25);
+
 // Calculate decompression requirements
 const ceiling = vpmModel.calculateCeiling();
 const stops = vpmModel.calculateDecompressionStops();
 const canAscend = vpmModel.canAscendDirectly();
+
+// TBDM-specific calculations
+const tbdmCeiling = tbdmModel.calculateCeiling();
+const tbdmBubbleRisk = tbdmModel.calculateBubbleRisk();
 ```
 
 ## 🐛 Troubleshooting

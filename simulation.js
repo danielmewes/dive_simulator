@@ -30,6 +30,9 @@ class DiveSimulator {
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
         
+        // TBDM settings
+        this.tbdmConservatismFactor = 1.0; // Default TBDM conservatism
+        
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
         
@@ -60,6 +63,9 @@ class DiveSimulator {
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
+                }),
+                tbdm: window.DecompressionSimulator.createModel('tbdm', { 
+                    conservatismFactor: this.tbdmConservatismFactor 
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -904,6 +910,28 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
+    updateTbdmConservatism(newConservatism) {
+        this.tbdmConservatismFactor = newConservatism;
+        
+        this.updateModelWithNewParameters(
+            'tbdm', 
+            'tbdm', 
+            { conservatismFactor: newConservatism },
+            '#tbdm-title',
+            `TBDM CF:${newConservatism.toFixed(1)}`
+        );
+        
+        // Also update the schedule title
+        document.getElementById('tbdm-schedule-title').textContent = `TBDM CF:${newConservatism.toFixed(1)}`;
+        
+        console.log(`TBDM conservatism updated to ${newConservatism}`);
+    }
+    
+    updateTbdmBodyTemperature(newTemp) {
+        // For now, just log the change - TBDM model would need to be extended for real-time temperature updates
+        console.log(`TBDM body temperature updated to ${newTemp}°C (Note: requires model reinitialization)`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -912,6 +940,7 @@ class DiveSimulator {
         const vpmBPanel = document.getElementById('vpmb-settings');
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
+        const tbdmPanel = document.getElementById('tbdm-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -919,6 +948,7 @@ class DiveSimulator {
             vpmBPanel.style.display = 'none';
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
+            tbdmPanel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -930,6 +960,9 @@ class DiveSimulator {
                     break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
+                    break;
+                case 'tbdm':
+                    tbdmPanel.style.display = 'block';
                     break;
             }
         };
@@ -987,6 +1020,24 @@ class DiveSimulator {
             vval18GfHighDisplay.textContent = newGfHigh;
             this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
         });
+        
+        // TBDM controls
+        const tbdmConservatismSlider = document.getElementById('unified-tbdm-conservatism');
+        const tbdmConservatismDisplay = document.getElementById('unified-tbdm-conservatism-display');
+        const tbdmBodyTempSlider = document.getElementById('unified-tbdm-body-temp');
+        const tbdmBodyTempDisplay = document.getElementById('unified-tbdm-body-temp-display');
+        
+        tbdmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseFloat(e.target.value);
+            tbdmConservatismDisplay.textContent = newConservatism.toFixed(1);
+            this.updateTbdmConservatism(newConservatism);
+        });
+        
+        tbdmBodyTempSlider.addEventListener('input', (e) => {
+            const newTemp = parseFloat(e.target.value);
+            tbdmBodyTempDisplay.textContent = newTemp.toFixed(1);
+            this.updateTbdmBodyTemperature(newTemp);
+        });
     }
     
     startSimulation() {
@@ -1041,6 +1092,8 @@ class DiveSimulator {
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
+        document.getElementById('tbdm-title').textContent = 'TBDM CF:1.0';
+        document.getElementById('tbdm-schedule-title').textContent = 'TBDM CF:1.0';
         
         // Reset zoom to full view
         this.zoomMode = 'full';

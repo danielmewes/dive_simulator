@@ -24,7 +24,11 @@ export { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
 // Export BVM(3) implementation
 export { BvmModel } from './models/BvmModel';
 
+// Export TBDM implementation
+export { TbdmModel } from './models/TbdmModel';
+
 // Export example/demo functions
 export { runVpmBDemo } from './examples/vpmb-demo';
 export { runBuhlmannDemo } from './examples/buhlmann-demo';
 export { runVVal18Demo } from './examples/vval18-demo';
+export { runTbdmDemo } from './examples/tbdm-demo';

@@ -688,12 +688,294 @@
         }
     }
     
+    /**
+     * Tissue-Bubble Diffusion Model (TBDM) by Gernhardt and Lambertsen
+     */
+    class TbdmModel extends DecompressionModel {
+        constructor(parameters = {}) {
+            super();
+            this.tbdmCompartments = [];
+            
+            // TBDM tissue compartment half-times (minutes) - based on Gernhardt's work
+            this.NITROGEN_HALF_TIMES = [
+                4.0, 8.2, 12.8, 18.7, 27.8, 38.9, 54.7, 77.5,
+                110.0, 146.2, 187.9, 239.6, 305.8, 390.7, 498.4, 635.8
+            ];
+            
+            this.HELIUM_HALF_TIMES = [
+                1.5, 3.1, 4.8, 7.2, 10.4, 14.6, 20.7, 29.3,
+                41.5, 55.4, 70.9, 90.6, 115.7, 147.8, 188.6, 240.4
+            ];
+            
+            // TBDM-specific bubble nucleation thresholds (bar) for each compartment
+            this.BUBBLE_NUCLEATION_THRESHOLDS = [
+                2.8, 2.6, 2.4, 2.2, 2.0, 1.9, 1.8, 1.7,
+                1.6, 1.5, 1.4, 1.35, 1.3, 1.25, 1.2, 1.15
+            ];
+            
+            // Bubble elimination rates (1/min) - faster rates for faster compartments
+            this.BUBBLE_ELIMINATION_RATES = [
+                0.23, 0.18, 0.14, 0.11, 0.085, 0.065, 0.048, 0.035,
+                0.026, 0.019, 0.015, 0.012, 0.009, 0.007, 0.0055, 0.0045
+            ];
+            
+            // Tissue perfusion rates (mL/min/100g tissue) - higher for faster compartments
+            this.TISSUE_PERFUSION_RATES = [
+                850, 650, 480, 350, 260, 190, 140, 100,
+                75, 55, 42, 32, 25, 19, 15, 12
+            ];
+            
+            // Bubble formation coefficients - tissue-specific sensitivity to bubble formation
+            this.BUBBLE_FORMATION_COEFFICIENTS = [
+                1.8, 1.6, 1.4, 1.3, 1.2, 1.15, 1.1, 1.05,
+                1.0, 0.95, 0.9, 0.88, 0.85, 0.82, 0.8, 0.78
+            ];
+            
+            this.tbdmParameters = {
+                bodyTemperature: 37.0, // °C
+                atmosphericPressure: 1.013, // bar
+                temperatureAdjustmentFactor: 1.0,
+                metabolicBubbleRate: 0.001, // bubbles/min baseline
+                surfaceTensionParameter: 0.0728, // N/m at body temperature
+                conservatismFactor: 1.0, // Standard conservatism
+                ...parameters
+            };
+            
+            // Validate parameters
+            if (this.tbdmParameters.conservatismFactor < 0.5 || this.tbdmParameters.conservatismFactor > 2.0) {
+                throw new Error('TBDM conservatism factor must be between 0.5 and 2.0');
+            }
+        }
+        
+        initializeTissueCompartments() {
+            this.tissueCompartments = [];
+            this.tbdmCompartments = [];
+            
+            for (let i = 0; i < 16; i++) {
+                const tbdmCompartment = {
+                    number: i + 1,
+                    nitrogenHalfTime: this.NITROGEN_HALF_TIMES[i],
+                    heliumHalfTime: this.HELIUM_HALF_TIMES[i],
+                    nitrogenLoading: 0.79 * this.surfacePressure, // Surface equilibrium
+                    heliumLoading: 0.0,
+                    bubbleNucleationThreshold: this.BUBBLE_NUCLEATION_THRESHOLDS[i] * this.tbdmParameters.conservatismFactor,
+                    bubbleVolumeFraction: 0.0,
+                    bubbleEliminationRate: this.BUBBLE_ELIMINATION_RATES[i],
+                    bubbleFormationCoefficient: this.BUBBLE_FORMATION_COEFFICIENTS[i],
+                    maxBubbleVolumeFraction: 0.05, // 5% maximum bubble volume fraction
+                    tissuePerfusion: this.TISSUE_PERFUSION_RATES[i],
+                    metabolicCoefficient: 1.0 + (0.1 * Math.exp(-i * 0.2)), // Decreasing with compartment number
+                    get totalLoading() {
+                        return this.nitrogenLoading + this.heliumLoading;
+                    }
+                };
+                
+                this.tissueCompartments.push(tbdmCompartment);
+                this.tbdmCompartments.push(tbdmCompartment);
+            }
+        }
+        
+        updateTissueLoadings(timeStep) {
+            const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
+            const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
+            
+            for (const compartment of this.tbdmCompartments) {
+                // Update conventional gas loading using Haldane equation
+                compartment.nitrogenLoading = this.calculateHaldaneLoading(
+                    compartment.nitrogenLoading,
+                    nitrogenPP,
+                    compartment.nitrogenHalfTime,
+                    timeStep
+                );
+                
+                compartment.heliumLoading = this.calculateHaldaneLoading(
+                    compartment.heliumLoading,
+                    heliumPP,
+                    compartment.heliumHalfTime,
+                    timeStep
+                );
+                
+                // Update bubble dynamics
+                this.updateBubbleDynamics(compartment, timeStep);
+            }
+        }
+        
+        calculateCeiling() {
+            let maxCeiling = 0;
+            
+            for (const compartment of this.tbdmCompartments) {
+                const ceiling = this.calculateCompartmentCeiling(compartment);
+                maxCeiling = Math.max(maxCeiling, ceiling);
+            }
+            
+            return Math.max(0, maxCeiling);
+        }
+        
+        calculateDecompressionStops() {
+            const stops = [];
+            const ceiling = this.calculateCeiling();
+            
+            if (ceiling <= 0) {
+                return stops; // No decompression required
+            }
+            
+            // Generate stops at 3m intervals starting from ceiling
+            let currentDepth = Math.ceil(ceiling / 3) * 3;
+            
+            while (currentDepth > 0) {
+                const stopTime = this.calculateStopTime(currentDepth);
+                
+                if (stopTime > 0) {
+                    stops.push({
+                        depth: currentDepth,
+                        time: stopTime,
+                        gasMix: this.currentDiveState.gasMix
+                    });
+                }
+                
+                currentDepth -= 3;
+            }
+            
+            return stops;
+        }
+        
+        canAscendDirectly() {
+            return this.calculateCeiling() <= 0 && this.calculateBubbleRisk() < 0.1;
+        }
+        
+        getModelName() {
+            return `TBDM (Gernhardt-Lambertsen) CF:${this.tbdmParameters.conservatismFactor}`;
+        }
+        
+        calculateDCSRisk() {
+            let maxRisk = 0;
+            
+            for (const compartment of this.tbdmCompartments) {
+                // Calculate supersaturation risk
+                const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+                const ambientPressure = this.currentDiveState.ambientPressure;
+                const supersaturation = Math.max(0, totalLoading - ambientPressure);
+                
+                // TBDM-specific risk calculation incorporating bubble dynamics
+                const nucleationRisk = supersaturation / compartment.bubbleNucleationThreshold;
+                const bubbleVolumeRisk = compartment.bubbleVolumeFraction / compartment.maxBubbleVolumeFraction;
+                
+                // Combined risk assessment
+                const tissueRisk = Math.max(nucleationRisk, bubbleVolumeRisk);
+                
+                // Temperature and metabolic adjustments
+                const temperatureAdjustment = 1.0 + ((this.tbdmParameters.bodyTemperature - 37.0) * 0.02);
+                const metabolicAdjustment = compartment.metabolicCoefficient;
+                
+                const adjustedRisk = tissueRisk * temperatureAdjustment * metabolicAdjustment;
+                
+                maxRisk = Math.max(maxRisk, adjustedRisk);
+            }
+            
+            // Convert to percentage with TBDM-specific scaling
+            const riskPercentage = Math.min(100, maxRisk * maxRisk * 45);
+            
+            return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+        }
+        
+        calculateBubbleRisk() {
+            let maxBubbleRisk = 0;
+            
+            for (const compartment of this.tbdmCompartments) {
+                const bubbleRisk = compartment.bubbleVolumeFraction / compartment.maxBubbleVolumeFraction;
+                maxBubbleRisk = Math.max(maxBubbleRisk, bubbleRisk);
+            }
+            
+            return maxBubbleRisk;
+        }
+        
+        updateBubbleDynamics(compartment, timeStep) {
+            const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+            const ambientPressure = this.currentDiveState.ambientPressure;
+            const supersaturation = Math.max(0, totalLoading - ambientPressure);
+            
+            // Bubble formation when supersaturation exceeds nucleation threshold
+            if (supersaturation > compartment.bubbleNucleationThreshold) {
+                const formationRate = (supersaturation - compartment.bubbleNucleationThreshold) * 
+                                   compartment.bubbleFormationCoefficient * 
+                                   this.tbdmParameters.metabolicBubbleRate;
+                
+                const bubbleFormation = formationRate * timeStep;
+                compartment.bubbleVolumeFraction = Math.min(
+                    compartment.maxBubbleVolumeFraction,
+                    compartment.bubbleVolumeFraction + bubbleFormation
+                );
+            }
+            
+            // Bubble elimination - always occurring
+            const eliminationRate = compartment.bubbleEliminationRate * 
+                                  (compartment.tissuePerfusion / 100) * // Perfusion enhancement
+                                  (ambientPressure / this.surfacePressure); // Pressure enhancement
+            
+            const bubbleElimination = compartment.bubbleVolumeFraction * eliminationRate * timeStep;
+            compartment.bubbleVolumeFraction = Math.max(0, compartment.bubbleVolumeFraction - bubbleElimination);
+            
+            // Surface tension effects on small bubbles (enhanced elimination)
+            if (compartment.bubbleVolumeFraction < 0.001) { // Very small bubble volumes
+                const surfaceTensionEffect = this.tbdmParameters.surfaceTensionParameter * timeStep;
+                compartment.bubbleVolumeFraction = Math.max(0, compartment.bubbleVolumeFraction - surfaceTensionEffect);
+            }
+        }
+        
+        calculateCompartmentCeiling(compartment) {
+            const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+            
+            // TBDM ceiling calculation considers both dissolved gas and bubble volume
+            let allowablePressure = compartment.bubbleNucleationThreshold;
+            
+            // Adjust for existing bubble volume
+            const bubbleAdjustment = compartment.bubbleVolumeFraction * 2.0; // Bubble volume penalty
+            allowablePressure -= bubbleAdjustment;
+            
+            // Apply conservatism factor
+            allowablePressure /= this.tbdmParameters.conservatismFactor;
+            
+            // Calculate ceiling depth
+            const ceilingPressure = totalLoading - allowablePressure;
+            const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+            
+            return Math.max(0, ceilingDepth);
+        }
+        
+        calculateStopTime(depth) {
+            // TBDM-specific stop time calculation
+            // Consider both tissue off-gassing and bubble elimination
+            
+            let maxStopTime = 0;
+            
+            for (const compartment of this.tbdmCompartments) {
+                // Tissue off-gassing component
+                const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+                const targetPressure = this.calculateAmbientPressure(depth);
+                const offGassingTime = compartment.nitrogenHalfTime * 
+                                     Math.log(totalLoading / targetPressure) / Math.log(2);
+                
+                // Bubble elimination component
+                const bubbleEliminationTime = compartment.bubbleVolumeFraction > 0.001 ? 
+                                             (1 / compartment.bubbleEliminationRate) * 
+                                             Math.log(compartment.bubbleVolumeFraction / 0.001) : 0;
+                
+                const combinedStopTime = Math.max(offGassingTime, bubbleEliminationTime);
+                maxStopTime = Math.max(maxStopTime, combinedStopTime);
+            }
+            
+            // Apply TBDM-specific minimum stop times and conservatism
+            return Math.max(1, Math.min(30, maxStopTime * this.tbdmParameters.conservatismFactor));
+        }
+    }
+    
     // Export classes to global namespace
     window.DecompressionSimulator.DecompressionModel = DecompressionModel;
     window.DecompressionSimulator.BuhlmannModel = BuhlmannModel;
     window.DecompressionSimulator.VpmBModel = VpmBModel;
     window.DecompressionSimulator.BvmModel = BvmModel;
     window.DecompressionSimulator.VVal18ThalmannModel = VVal18ThalmannModel;
+    window.DecompressionSimulator.TbdmModel = TbdmModel;
     
     // Helper functions for the UI
     window.DecompressionSimulator.createModel = function(type, options) {
@@ -714,6 +996,12 @@
                     dcsRiskPercent: options.dcsRiskPercent || 2.3,
                     gradientFactorLow: options.gradientFactorLow || 30,
                     gradientFactorHigh: options.gradientFactorHigh || 85
+                });
+            case 'tbdm':
+                return new TbdmModel({
+                    conservatismFactor: options.conservatismFactor || 1.0,
+                    bodyTemperature: options.bodyTemperature || 37.0,
+                    atmosphericPressure: options.atmosphericPressure || 1.013
                 });
             default:
                 throw new Error('Unknown model type: ' + type);
