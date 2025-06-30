@@ -108,6 +108,9 @@ export class RgbmFoldedModel extends DecompressionModel {
   private readonly REPETITIVE_DIVE_THRESHOLD = 6; // hours
 
   constructor(settings: Partial<RgbmSettings> = {}) {
+    // Call parent constructor first (required in TypeScript)
+    super();
+
     this.settings = {
       gradientFactorLow: settings.gradientFactorLow ?? 25,
       gradientFactorHigh: settings.gradientFactorHigh ?? 85,
@@ -116,7 +119,7 @@ export class RgbmFoldedModel extends DecompressionModel {
       ...settings
     };
 
-    // Initialize instance variables before calling super()
+    // Initialize instance variables after super()
     this.rgbmCompartments = [];
     this.firstStopDepth = 0;
     this.diveCount = 1;
@@ -124,11 +127,11 @@ export class RgbmFoldedModel extends DecompressionModel {
     this.maxDepthReached = 0;
     this.totalBubbleVolume = 0;
 
-    // Call parent constructor after all constants are defined
-    super();
-
     // Validate settings
     this.validateSettings();
+
+    // Re-initialize tissue compartments with RGBM-specific data
+    this.initializeTissueCompartments();
   }
 
   private validateSettings(): void {
@@ -149,6 +152,11 @@ export class RgbmFoldedModel extends DecompressionModel {
   protected initializeTissueCompartments(): void {
     this.tissueCompartments = [];
     this.rgbmCompartments = [];
+
+    // If settings are not yet initialized (called from parent constructor), skip initialization
+    if (!this.settings) {
+      return;
+    }
 
     for (let i = 0; i < 16; i++) {
       const rgbmCompartment: RgbmCompartment = {
@@ -181,8 +189,8 @@ export class RgbmFoldedModel extends DecompressionModel {
   }
 
   public updateTissueLoadings(timeStep: number): void {
-    const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
-    const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
+    const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen, this.currentDiveState.ambientPressure);
+    const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium, this.currentDiveState.ambientPressure);
 
     // Track maximum depth reached
     this.maxDepthReached = Math.max(this.maxDepthReached, this.currentDiveState.depth);
