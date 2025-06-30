@@ -41,6 +41,7 @@ class DiveSimulator {
         
         this.initializeModels();
         this.initializeEventListeners();
+        this.syncCheckboxStates(); // Sync checkbox states with enabledModels on page load
         this.initializeCharts();
         this.updateDisplay();
         
@@ -350,6 +351,20 @@ class DiveSimulator {
         } else {
             select.disabled = false;
         }
+    }
+    
+    syncCheckboxStates() {
+        // Read actual checkbox states and sync with enabledModels object
+        // This is important for page refreshes where browsers might remember checkbox states
+        Object.keys(this.enabledModels).forEach(modelName => {
+            const checkbox = document.getElementById(`model-${modelName}`);
+            if (checkbox) {
+                this.enabledModels[modelName] = checkbox.checked;
+            }
+        });
+        
+        // Apply the synced state to UI elements
+        this.updateModelVisibility();
     }
     
     initializeCharts() {
