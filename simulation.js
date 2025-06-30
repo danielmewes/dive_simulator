@@ -292,8 +292,64 @@ class DiveSimulator {
             }
         });
         
+        // Update detailed tissue model selector
+        this.updateDetailedModelSelector();
+        
         // Update charts to reflect enabled models
         this.updateCharts();
+    }
+    
+    updateDetailedModelSelector() {
+        const select = document.getElementById('detailed-model-select');
+        if (!select) return;
+        
+        // Get currently selected value
+        const currentValue = select.value;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add options only for enabled models
+        const modelNames = {
+            buhlmann: 'Bühlmann ZH-L16C',
+            vpmb: 'VPM-B',
+            bvm: 'BVM(3)',
+            vval18: 'VVal-18 Thalmann'
+        };
+        
+        let foundValidOption = false;
+        Object.keys(this.enabledModels).forEach(modelName => {
+            if (this.enabledModels[modelName]) {
+                const option = document.createElement('option');
+                option.value = modelName;
+                option.textContent = modelNames[modelName];
+                select.appendChild(option);
+                
+                if (modelName === currentValue) {
+                    foundValidOption = true;
+                    select.value = currentValue;
+                }
+            }
+        });
+        
+        // If current selection is no longer valid, select the first enabled model
+        if (!foundValidOption && select.options.length > 0) {
+            select.value = select.options[0].value;
+            this.selectedDetailedModel = select.value;
+        }
+        
+        // If no models are enabled, disable the selector
+        if (select.options.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No models enabled';
+            option.disabled = true;
+            select.appendChild(option);
+            select.value = '';
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+        }
     }
     
     initializeCharts() {
@@ -383,7 +439,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -476,7 +537,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -569,7 +635,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -740,7 +811,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     },
                     tooltip: {
@@ -1370,7 +1446,7 @@ class DiveSimulator {
         // Ambient pressure overlay
         this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
-        this.tissueChart.update('none');
+        this.tissueChart.update('default');
         
         // Update dive profile chart
         this.profileChart.data.labels = timeLabels;
@@ -1399,7 +1475,7 @@ class DiveSimulator {
         this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
-        this.profileChart.update('none');
+        this.profileChart.update('default');
         
         // Update DCS risk chart using model-specific calculations
         this.riskChart.data.labels = timeLabels;
@@ -1431,7 +1507,7 @@ class DiveSimulator {
         // Dive profile overlay - Dataset 4 (always visible)
         this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
         
-        this.riskChart.update('none');
+        this.riskChart.update('default');
         
         // Update detailed tissue chart
         this.updateDetailedTissueChart();
@@ -1466,7 +1542,7 @@ class DiveSimulator {
         // Dive profile overlay - Dataset 4 (always visible)
         this.bubbleChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
         
-        this.bubbleChart.update('none');
+        this.bubbleChart.update('default');
         
         console.log(`Updated charts with ${zoomedHistory.length} data points (zoom mode: ${this.zoomMode})`);
     }
@@ -1493,7 +1569,7 @@ class DiveSimulator {
             // Clear the chart if the selected model is disabled
             this.detailedTissueChart.data.datasets = [];
             this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - Model Disabled`;
-            this.detailedTissueChart.update('none');
+            this.detailedTissueChart.update('default');
             return;
         }
         
@@ -1562,7 +1638,7 @@ class DiveSimulator {
         // Color compartments showing supersaturation differently
         this.updateCompartmentSupersaturationColors(compartmentCount);
         
-        this.detailedTissueChart.update('none');
+        this.detailedTissueChart.update('default');
     }
     
     updateCompartmentSupersaturationColors(compartmentCount) {
