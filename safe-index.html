@@ -200,8 +200,41 @@
         </div>
     </div>
 
-    <!-- Load the decompression models and simulation engine -->
-    <script src="dist/bundle.js"></script>
-    <script src="simulation.js"></script>
+    <!-- Load scripts with proper error handling -->
+    <script>
+        console.log('Starting script loading sequence...');
+        
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = function() {
+                console.log(`✅ Loaded: ${src}`);
+                if (callback) callback();
+            };
+            script.onerror = function() {
+                console.error(`❌ Failed to load: ${src}`);
+                alert(`Failed to load ${src}. Please check the file path and refresh the page.`);
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load bundle.js first, then simulation.js
+        loadScript('dist/bundle.js', function() {
+            // Check if DecompressionSimulator was loaded
+            if (typeof window.DecompressionSimulator === 'undefined') {
+                console.error('❌ DecompressionSimulator not found after loading bundle.js');
+                alert('Failed to load decompression models. Please refresh the page.');
+                return;
+            }
+            
+            console.log('✅ DecompressionSimulator loaded successfully');
+            console.log('Available methods:', Object.keys(window.DecompressionSimulator));
+            
+            // Now load simulation.js
+            loadScript('simulation.js', function() {
+                console.log('✅ All scripts loaded successfully');
+            });
+        });
+    </script>
 </body>
 </html>
