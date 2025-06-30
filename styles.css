@@ -904,6 +904,7 @@ button:hover {
 
 .bubble {
     position: absolute;
+    bottom: -100px; /* Start bubbles off-screen at the bottom */
     background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(135, 206, 235, 0.3), rgba(0, 100, 200, 0.1));
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
@@ -915,7 +916,7 @@ button:hover {
 
 @keyframes floatUp {
     0% {
-        transform: translateY(100vh) translateX(0) rotate(0deg);
+        transform: translateY(0) translateX(0) rotate(0deg);
         opacity: 0;
     }
     10% {
@@ -925,7 +926,7 @@ button:hover {
         opacity: 1;
     }
     100% {
-        transform: translateY(-200px) translateX(var(--drift)) rotate(360deg);
+        transform: translateY(calc(-100vh - 300px)) translateX(var(--drift)) rotate(360deg);
         opacity: 0;
     }
 }
