@@ -1,21 +1,42 @@
-# Scuba Diving Decompression Models
+# 🤿 Interactive Dive Decompression Simulator
 
-A TypeScript library implementing multiple decompression algorithms used in technical diving, designed for educational simulation and comparison of different decompression models.
+A comprehensive browser-based interface for real-time dive decompression simulation and model comparison, built on TypeScript implementations of established decompression algorithms.
 
-## Overview
+## 🚀 Quick Start
 
-This project provides comprehensive implementations of established decompression algorithms used in technical diving. The library features modular architecture allowing easy comparison between different models and supports various gas mixtures including air, nitrox, and trimix.
+1. **Open the simulator**: Open `index.html` in a modern web browser
+2. **Start diving**: Use the depth slider or buttons to descend
+3. **Monitor models**: Watch all 4 decompression models in real-time
+4. **Switch gases**: Use the gas controls to change breathing mix
+5. **Speed up time**: Use time acceleration for longer dives
 
-## Features
+## 📊 Interactive Features
 
-- **Multiple Decompression Models**: Four fully implemented algorithms ready for comparison
-- **Comprehensive Gas Support**: Air, nitrox, and trimix gas mixtures with dynamic switching
-- **Tissue Compartment Modeling**: Multi-compartment models with nitrogen and helium tracking
-- **Real-time Calculations**: Decompression ceilings, stop requirements, and tissue saturation
-- **Educational Focus**: Detailed model implementations for learning decompression theory
-- **TypeScript**: Full type safety and modern JavaScript features
+### Real-Time Dive Controls
+- **Depth Control**: Interactive slider + quick descent/ascent buttons (0-60m)
+- **Time Acceleration**: 1x, 5x, 10x, 60x speed multipliers for extended simulations
+- **Gas Switching**: Custom Trimix mixing with preset options (Air, EAN32, Trimix)
+- **Model Selection**: Toggle individual decompression models on/off
 
-## Implemented Decompression Models
+### Live Visualizations
+- **Tissue Loading Charts**: Compare tissue saturation across all models
+- **Dive Profile**: Real-time depth timeline with ceiling overlays
+- **DCS Risk Analysis**: Instant risk assessment percentages
+- **Decompression Schedules**: Stop depths and times for each model
+
+### Gas Mixture Support
+- **Air** (21/0) - Standard air mixture
+- **Nitrox** (EAN32: 32/0) - Enriched air nitrox
+- **Trimix** (18/45, 21/35) - Common technical diving mixtures
+- **Custom mixes**: Manual O₂/He percentage input with automatic N₂ calculation
+
+## 🧮 Implemented Decompression Models
+
+### ✅ Bühlmann ZH-L16C with Gradient Factors
+- Classic dissolved gas model with 16 tissue compartments
+- M-value calculations for decompression limits
+- Configurable gradient factors for conservatism adjustment
+- Industry standard for recreational and technical diving
 
 ### ✅ VPM-B (Varying Permeability Model with Boyle Law Compensation)
 - Dual-phase model accounting for dissolved gas and bubble dynamics
@@ -23,148 +44,203 @@ This project provides comprehensive implementations of established decompression
 - Adjustable conservatism levels (0-5)
 - Critical volume hypothesis implementation
 
-### ✅ Bühlmann ZH-L16C 
-- Classic dissolved gas model with gradient factor support
-- 16 tissue compartments with established half-times
-- M-value calculations for decompression limits
-- Configurable gradient factors for conservatism adjustment
-
 ### ✅ BVM(3) (Bubble Volume Model)
+- Three-compartment bubble volume model (fast, medium, slow)
+- Volume-based bubble dynamics calculations
+- Reduced gradient approach for decompression
 - Alternative bubble model implementation
-- Volume-based bubble dynamics
-- Reduced gradient approach for decompression calculations
 
-### ✅ VVal-18 (Thalmann Algorithm)
+### ✅ VVal-18 Thalmann Algorithm
 - U.S. Navy decompression algorithm implementation
-- 3-compartment tissue model (fast, intermediate, slow)
+- 3-compartment tissue model with linear-exponential kinetics
 - Conservative DCS risk assessment with configurable parameters
+- Used as basis for U.S. Navy diving tables
 
-## Technology Stack
+## 🎮 Controls Guide
 
-- **Language**: TypeScript 5.0+
-- **Testing**: Jest with comprehensive unit test coverage
-- **Architecture**: Object-oriented design with abstract base classes
-- **Dependencies**: Zero runtime dependencies for maximum compatibility
+### Depth Management
+- **Depth Slider**: Direct depth adjustment (0-60m)
+- **⬇️ Fast Descent**: +5m quick descent button
+- **⬆️ Slow Ascent**: -3m controlled ascent button
 
-## Installation & Usage
+### Time Controls
+- **Speed Buttons**: 1x, 5x, 10x, 60x time acceleration
+- **⏸️ Pause/▶️ Play**: Stop/resume simulation
+- **🔄 Reset**: Return to surface conditions
+
+### Gas Controls
+- **O₂/He Inputs**: Manual percentage entry with validation
+- **Preset Buttons**: One-click gas mixture selection
+- **🔄 Switch Gas**: Apply new gas mixture instantly
+
+### Chart Navigation
+- **🧠 Tissue Loading**: Compartment saturation comparison
+- **📈 Dive Profile**: Depth and ceiling timeline
+- **⚠️ DCS Risk**: Risk assessment by model
+
+## 📈 Understanding the Data
+
+### Status Panel
+- **Current Depth**: Real-time depth in meters
+- **Dive Time**: Elapsed time in HH:MM format
+- **Current Gas**: Active breathing mixture (O₂/He percentages)
+- **Ambient Pressure**: Pressure at current depth in bar
+
+### Model Results
+- **Ceiling**: Minimum safe depth in meters
+- **TTS**: Total time to surface in minutes
+- **Status**: No Deco ✅ / Deco Required ⚠️
+
+### Decompression Schedules
+- **Stop Depth**: Required decompression stop depth
+- **Stop Time**: Duration at each stop depth
+- **Model Comparison**: Side-by-side schedule comparison
+
+## 🛠️ Technical Architecture
+
+### Frontend Technology
+- **Pure HTML5/CSS3/JavaScript**: No frameworks, maximum compatibility
+- **Chart.js Integration**: Professional real-time data visualization
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+- **Dark Theme**: Modern glassmorphism UI with accessibility features
+
+### Decompression Engine
+- **TypeScript Models**: Compiled from comprehensive algorithm implementations
+- **Real-time Processing**: 1-second update intervals with smooth performance
+- **Zero Dependencies**: Self-contained bundle for offline use
+- **Browser Compatible**: ES6+ support with broad browser compatibility
+
+### File Structure
+```
+├── index.html          # Main UI interface
+├── styles.css          # Modern responsive styling
+├── simulation.js       # Real-time simulation engine
+├── bundle.js           # Compiled decompression models
+└── src/                # TypeScript source code
+    ├── models/         # Decompression algorithm implementations
+    ├── examples/       # Usage demonstrations
+    └── __tests__/      # Comprehensive test suite
+```
+
+## 🎯 Use Cases
+
+### Education & Training
+- **Dive Theory**: Understand decompression model differences visually
+- **Safety Training**: Visualize DCS risk factors and ceiling violations
+- **Model Comparison**: See how different algorithms behave in real-time
+- **Gas Management**: Learn about gas switching strategies and effects
+
+### Research & Development
+- **Algorithm Analysis**: Compare model predictions side-by-side
+- **Gas Mixture Effects**: Study Trimix impact on decompression requirements
+- **Dive Profile Design**: Experiment with different ascent profiles
+- **Parameter Sensitivity**: Test conservatism settings and their effects
+
+### Academic Applications
+- **Classroom Demonstrations**: Interactive teaching tool for dive physics
+- **Student Projects**: Foundation for decompression theory studies
+- **Research Papers**: Validated algorithms for academic research
+
+## 🔧 Development & API
 
 ### Build the Project
 ```bash
-npm install
-npm run build
-```
-
-### Run Tests
-```bash
-npm test
-npm run test:watch  # Watch mode for development
-```
-
-### Run Demonstrations
-```bash
+npm install          # Install development dependencies
+npm run build       # Compile TypeScript to JavaScript
+npm test            # Run comprehensive test suite
 npm run demo        # Interactive model demonstrations
-npm run test:basic  # Basic functionality verification
 ```
 
-### Example Usage
-
+### Programmatic Usage
 ```typescript
 import { VpmBModel, BuhlmannModel, VVal18ThalmannModel } from './src/models';
 
-// Create VPM-B model with moderate conservatism
+// Create models with different conservatism settings
 const vpmModel = new VpmBModel(3);
-
-// Create Bühlmann model with gradient factors
 const buhlmannModel = new BuhlmannModel({ low: 30, high: 85 });
+const vval18Model = new VVal18ThalmannModel({ maxDcsRisk: 2.5 });
 
-// Create VVal-18 model with custom parameters
-const vval18Model = new VVal18ThalmannModel({ 
-  maxDcsRisk: 2.5,  // More conservative 2.5% risk
-  safetyFactor: 1.2 
-});
+// Define gas mix (Trimix 21/35)
+const trimix2135 = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - this.oxygen - this.helium; } };
 
-// Define gas mix (32% nitrox)
-const nitrox32 = { 
-  oxygen: 0.32, 
-  helium: 0.0, 
-  get nitrogen() { return 1 - this.oxygen - this.helium; }
-};
-
-// Simulate dive to 30m for 25 minutes
-vpmModel.updateDiveState({ depth: 30, time: 0, gasMix: nitrox32 });
+// Simulate dive profile
+vpmModel.updateDiveState({ depth: 30, time: 0, gasMix: trimix2135 });
 vpmModel.updateTissueLoadings(25);
 
 // Calculate decompression requirements
 const ceiling = vpmModel.calculateCeiling();
 const stops = vpmModel.calculateDecompressionStops();
-
-// Compare with other models
-buhlmannModel.updateDiveState({ depth: 30, time: 0, gasMix: nitrox32 });
-buhlmannModel.updateTissueLoadings(25);
-const buhlmannCeiling = buhlmannModel.calculateCeiling();
-
-vval18Model.updateDiveState({ depth: 30, time: 0, gasMix: nitrox32 });
-vval18Model.updateTissueLoadings(25);
-const vval18Ceiling = vval18Model.calculateCeiling();
+const canAscend = vpmModel.canAscendDirectly();
 ```
 
-## Project Structure
+## 🐛 Troubleshooting
 
-```
-src/
-├── models/
-│   ├── DecompressionModel.ts     # Abstract base class
-│   ├── VpmBModel.ts             # VPM-B implementation
-│   ├── BuhlmannModel.ts         # Bühlmann ZH-L16C
-│   ├── BvmModel.ts              # BVM(3) model
-│   ├── VVal18ThalmannModel.ts   # VVal-18 algorithm
-│   └── __tests__/               # Comprehensive test suite
-├── examples/                    # Usage demonstrations
-└── index.ts                     # Main exports
-```
+### Common Issues
+1. **Models not loading**: Refresh page, check browser console for errors
+2. **Charts not updating**: Ensure JavaScript is enabled in browser settings
+3. **Slow performance**: Reduce time acceleration or close other browser tabs
+4. **Mobile display issues**: Rotate device to landscape for optimal viewing
 
-## Testing
+### Performance Tips
+- Use lower time acceleration (1x-5x) for detailed analysis
+- Pause simulation when adjusting multiple settings
+- Reset dive periodically during long simulations
+- Close unused browser tabs to free up memory
 
-The project includes comprehensive unit tests covering:
-- Model initialization and configuration
-- Tissue loading calculations across all compartments
-- Decompression ceiling and stop calculations
-- Gas mixture handling and validation
-- Edge cases and error conditions
-- Model-specific features (bubble counts, M-values, etc.)
+### Browser Requirements
+- Modern browser with ES6+ support required
+- JavaScript must be enabled
+- Recommended: Chrome, Firefox, Safari, Edge (latest versions)
+- Minimum screen resolution: 1024x768 for optimal experience
 
-## Educational Purpose & Disclaimer
+## ⚠️ Safety Disclaimer
 
-This library is designed for **educational and research purposes only**:
+**FOR EDUCATIONAL PURPOSES ONLY**
 
-### ⚠️ Important Safety Notice
+This simulator is designed for educational and research purposes. It should **NEVER** be used for actual dive planning or real diving operations. 
+
+### Important Safety Notices
 - **Never use for actual dive planning or execution**
 - **Always use certified dive computers and established decompression procedures**
 - **Consult qualified dive professionals for actual diving activities**
+- **This software has not been validated for real-world diving applications**
 
 ### Educational Limitations
 - Simplified implementations focused on core algorithm understanding
 - No altitude compensation or surface interval handling
 - Single dive profiles only (no repetitive dive calculations)
 - Not validated against certified decompression software
+- Risk calculations are educational estimates only
 
-## Contributing
+## 📚 References & Further Reading
+
+### Decompression Theory
+- [Bühlmann Decompression Algorithm](https://en.wikipedia.org/wiki/B%C3%BChlmann_decompression_algorithm)
+- [Varying Permeability Model](https://en.wikipedia.org/wiki/Varying_Permeability_Model)
+- [US Navy Diving Manual](https://www.navsea.navy.mil/Home/SUPSALV/Diving/)
+- [Decompression Theory and Practice](https://www.diverite.com/articles/)
+
+### Scientific Papers
+- Yount, D.E., and Hoffman, D.C. (1986). "On the use of a bubble formation model to calculate diving air decompression tables"
+- Bühlmann, A.A. (1984). "Decompression-Decompression Sickness"
+- Baker, E.C. (1998). "Understanding M-values"
+- Wienke, B.R. (2003). "Reduced gradient bubble model"
+- Thalmann, E.D. (1985). "Air-N2O2 decompression computer algorithm development"
+
+## 🤝 Contributing
 
 This project welcomes contributions focused on:
 - Educational improvements and documentation
 - Additional decompression model implementations
-- Enhanced testing coverage
+- Enhanced visualization features
+- User interface improvements
+- Testing coverage expansion
 - Performance optimizations
-- Code quality improvements
 
-## License
+## 📄 License
 
 MIT License - See LICENSE file for details.
 
-## References
+---
 
-- Yount, D.E., and Hoffman, D.C. (1986). On the use of a bubble formation model to calculate diving air decompression tables
-- Bühlmann, A.A. (1984). Decompression-Decompression Sickness
-- Baker, E.C. (1998). Understanding M-values
-- Wienke, B.R. (2003). Reduced gradient bubble model
-- Thalmann, E.D. (1985). Air-N2O2 decompression computer algorithm development
+**Remember**: This is a simulation tool for education only. Always dive safely and within your training limits! 🤿✨
