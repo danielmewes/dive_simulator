@@ -118,20 +118,46 @@ export class HillsModel extends DecompressionModel {
     this.tissueCompartments = [];
     this.hillsCompartments = [];
 
+    // Use local hardcoded arrays to avoid initialization order issues
+    const thermalHalfTimes = [
+      2.5, 5.0, 8.0, 12.5, 18.5, 27.0, 38.3, 54.3,
+      77.0, 109.0, 146.0, 187.0, 239.0, 305.0, 390.0, 498.0
+    ];
+
+    const thermalDiffusivities = [
+      1.5, 1.3, 1.1, 0.95, 0.82, 0.71, 0.63, 0.56,
+      0.51, 0.47, 0.44, 0.41, 0.39, 0.37, 0.35, 0.34
+    ];
+
+    const heatCapacities = [
+      3800, 3700, 3600, 3500, 3400, 3300, 3250, 3200,
+      3150, 3100, 3080, 3060, 3040, 3020, 3000, 2980
+    ];
+
+    const nitrogenSolubilityCoeffs = [
+      0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.018, 0.019,
+      0.020, 0.021, 0.022, 0.023, 0.024, 0.025, 0.026, 0.027
+    ];
+
+    const heliumSolubilityCoeffs = [
+      0.008, 0.009, 0.010, 0.011, 0.012, 0.013, 0.014, 0.015,
+      0.016, 0.017, 0.018, 0.019, 0.020, 0.021, 0.022, 0.023
+    ];
+
     for (let i = 0; i < 16; i++) {
       const hillsCompartment: HillsCompartment = {
         number: i + 1,
-        nitrogenHalfTime: this.THERMAL_HALF_TIMES[i]!,
-        heliumHalfTime: this.THERMAL_HALF_TIMES[i]! * 0.4, // Helium diffuses faster
+        nitrogenHalfTime: thermalHalfTimes[i]!,
+        heliumHalfTime: thermalHalfTimes[i]! * 0.4, // Helium diffuses faster
         nitrogenLoading: 0.79 * this.surfacePressure, // Surface equilibrium
         heliumLoading: 0.0,
-        thermalDiffusivity: this.THERMAL_DIFFUSIVITIES[i]! * 1e-7,
-        heatCapacity: this.HEAT_CAPACITIES[i]!,
-        nitrogenSolubility: this.NITROGEN_SOLUBILITY_COEFFS[i]!,
-        heliumSolubility: this.HELIUM_SOLUBILITY_COEFFS[i]!,
+        thermalDiffusivity: thermalDiffusivities[i]! * 1e-7,
+        heatCapacity: heatCapacities[i]!,
+        nitrogenSolubility: nitrogenSolubilityCoeffs[i]!,
+        heliumSolubility: heliumSolubilityCoeffs[i]!,
         dissolutionRate: 1.0,
         dissolutionEnthalpy: 0.0,
-        tissueTemperature: this.thermodynamicParams.coreTemperature,
+        tissueTemperature: this.thermodynamicParams?.coreTemperature || 37.0,
         get totalLoading() {
           return this.nitrogenLoading + this.heliumLoading;
         }
