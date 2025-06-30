@@ -310,6 +310,7 @@ class DiveSimulator {
                 },
                 scales: {
                     x: {
+                        type: 'linear',
                         title: {
                             display: true,
                             text: 'Time (minutes)',
@@ -402,6 +403,7 @@ class DiveSimulator {
                 },
                 scales: {
                     x: {
+                        type: 'linear',
                         title: {
                             display: true,
                             text: 'Time (minutes)',
@@ -494,6 +496,7 @@ class DiveSimulator {
                 },
                 scales: {
                     x: {
+                        type: 'linear',
                         title: {
                             display: true,
                             text: 'Time (minutes)',
@@ -565,6 +568,7 @@ class DiveSimulator {
                 },
                 scales: {
                     x: {
+                        type: 'linear',
                         title: {
                             display: true,
                             text: 'Time (minutes)',
