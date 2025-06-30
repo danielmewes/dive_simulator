@@ -170,12 +170,25 @@
                 <section class="charts-section">
                     <div class="chart-tabs">
                         <button class="chart-tab active" data-chart="tissue-loading">🧠 Tissue Loading</button>
+                        <button class="chart-tab" data-chart="detailed-tissue">🔬 Detailed Tissue</button>
                         <button class="chart-tab" data-chart="dive-profile">📈 Dive Profile</button>
                         <button class="chart-tab" data-chart="dcs-risk">⚠️ DCS Risk</button>
                     </div>
                     
+                    <!-- Model selector for detailed tissue view -->
+                    <div class="detailed-model-selector" id="detailed-model-selector">
+                        <label for="detailed-model-select">Decompression Model:</label>
+                        <select id="detailed-model-select">
+                            <option value="buhlmann">Bühlmann ZH-L16C</option>
+                            <option value="vpmb">VPM-B</option>
+                            <option value="bvm">BVM(3)</option>
+                            <option value="vval18">VVal-18 Thalmann</option>
+                        </select>
+                    </div>
+                    
                     <div class="chart-container">
                         <canvas id="tissue-loading-chart" class="chart active"></canvas>
+                        <canvas id="detailed-tissue-chart" class="chart"></canvas>
                         <canvas id="dive-profile-chart" class="chart"></canvas>
                         <canvas id="dcs-risk-chart" class="chart"></canvas>
                     </div>
