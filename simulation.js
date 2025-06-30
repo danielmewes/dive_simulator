@@ -17,6 +17,7 @@ class DiveSimulator {
         this.tissueChart = null;
         this.profileChart = null;
         this.riskChart = null;
+        this.bubbleChart = null;
         
         // Current dive parameters
         this.currentDepth = 0;
@@ -158,6 +159,8 @@ class DiveSimulator {
                         this.profileChart.resize();
                     } else if (chartId === 'dcs-risk-chart' && this.riskChart) {
                         this.riskChart.resize();
+                    } else if (chartId === 'bubble-parameters-chart' && this.bubbleChart) {
+                        this.bubbleChart.resize();
                     }
                 }, 100); // Small delay to ensure the visibility transition completes
             });
@@ -647,6 +650,10 @@ class DiveSimulator {
         
         this.riskChart.data.datasets[0].data = [0, 0, 0, 0];
         this.riskChart.update();
+        
+        this.bubbleChart.data.labels = [];
+        this.bubbleChart.data.datasets.forEach(dataset => dataset.data = []);
+        this.bubbleChart.update();
         
         this.updateDisplay();
         
