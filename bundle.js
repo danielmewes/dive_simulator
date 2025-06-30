@@ -79,14 +79,27 @@
         canAscendDirectly() {
             throw new Error('canAscendDirectly must be implemented by subclass');
         }
+        
+        // Static utility method for gradient factor interpolation
+        static interpolateGradientFactor(depth, gradientFactorLow, gradientFactorHigh) {
+            // Linear interpolation between GF Low and GF High
+            // GF Low applies at first deco stop, GF High at surface
+            const firstDecoDepth = 3; // Assuming 3m first deco stop
+            if (depth >= firstDecoDepth) {
+                return gradientFactorLow;
+            } else {
+                const ratio = depth / firstDecoDepth;
+                return gradientFactorHigh + ratio * (gradientFactorLow - gradientFactorHigh);
+            }
+        }
     }
     
     // === Bühlmann ZH-L16C Model ===
     class BuhlmannModel extends DecompressionModel {
-        constructor(gradientFactorLow = 0.3, gradientFactorHigh = 0.8) {
+        constructor(gradientFactorLow = 30, gradientFactorHigh = 85) {
             super();
-            this.gradientFactorLow = gradientFactorLow;
-            this.gradientFactorHigh = gradientFactorHigh;
+            this.gradientFactorLow = gradientFactorLow;  // Store as percentage
+            this.gradientFactorHigh = gradientFactorHigh; // Store as percentage
             this.initializeTissueCompartments();
         }
         
@@ -147,6 +160,24 @@
             });
         }
         
+        getGradientFactors() {
+            return {
+                low: this.gradientFactorLow,   // Already stored as percentage
+                high: this.gradientFactorHigh
+            };
+        }
+        
+        setGradientFactors(gradientFactors) {
+            this.gradientFactorLow = gradientFactors.low;   // Store as percentage
+            this.gradientFactorHigh = gradientFactors.high;
+        }
+        
+        calculateGradientFactorAtDepth(depth) {
+            return DecompressionModel.interpolateGradientFactor(
+                depth, this.gradientFactorLow, this.gradientFactorHigh
+            );
+        }
+        
         calculateCeiling() {
             let maxCeiling = 0;
             
@@ -155,11 +186,15 @@
                 const a = compartment.a;
                 const b = compartment.b;
                 
-                // Calculate M-value with gradient factors
-                const mValue = (totalInertGas - a) * b;
-                const ceiling = Math.max(0, (mValue - this.surfacePressure) * 10);
-                
-                maxCeiling = Math.max(maxCeiling, ceiling);
+                // Calculate M-value with gradient factors using standard Bühlmann formula
+                // For ceiling calculation, we solve: totalInertGas <= (a * ambientPressure + b) * GF
+                // Rearranging: ambientPressure >= (totalInertGas / GF - b) / a
+                const gf = this.gradientFactorHigh / 100; // Convert percentage to decimal
+                if (gf > 0 && a > 0) {
+                    const requiredAmbientPressure = (totalInertGas / gf - b) / a;
+                    const ceiling = Math.max(0, (requiredAmbientPressure - this.surfacePressure) * 10);
+                    maxCeiling = Math.max(maxCeiling, ceiling);
+                }
             });
             
             return Math.ceil(maxCeiling / 3) * 3; // Round up to nearest 3m
@@ -420,9 +455,18 @@
     
     // === VVal-18 Thalmann Model ===
     class VVal18ThalmannModel extends DecompressionModel {
-        constructor(dcsRiskPercent = 2.3) {
+        constructor(options = {}) {
             super();
-            this.dcsRiskPercent = dcsRiskPercent;
+            // Handle legacy single parameter or new options object
+            if (typeof options === 'number') {
+                this.dcsRiskPercent = options;
+                this.gradientFactorLow = 30;
+                this.gradientFactorHigh = 85;
+            } else {
+                this.dcsRiskPercent = options.dcsRiskPercent || 2.3;
+                this.gradientFactorLow = options.gradientFactorLow || 30;
+                this.gradientFactorHigh = options.gradientFactorHigh || 85;
+            }
             this.initializeTissueCompartments();
         }
         
@@ -487,15 +531,38 @@
             });
         }
         
+        getGradientFactors() {
+            return {
+                low: this.gradientFactorLow,
+                high: this.gradientFactorHigh
+            };
+        }
+        
+        setGradientFactors(gradientFactors) {
+            this.gradientFactorLow = gradientFactors.low;
+            this.gradientFactorHigh = gradientFactors.high;
+        }
+        
+        calculateGradientFactorAtDepth(depth) {
+            return DecompressionModel.interpolateGradientFactor(
+                depth, this.gradientFactorLow, this.gradientFactorHigh
+            );
+        }
+        
         calculateCeiling() {
             let maxCeiling = 0;
             
             this.tissueCompartments.forEach(compartment => {
                 const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
                 
-                // Thalmann linear-exponential calculation (simplified)
-                const allowablePressure = compartment.slope * this.currentDiveState.ambientPressure + compartment.intercept;
-                const ceiling = Math.max(0, (totalInertGas - allowablePressure - this.surfacePressure) * 10);
+                // Thalmann linear-exponential calculation with gradient factors
+                const baseAllowablePressure = compartment.slope * this.currentDiveState.ambientPressure + compartment.intercept;
+                
+                // Apply gradient factors (convert percentage to decimal)
+                const gfHigh = this.gradientFactorHigh / 100;
+                const adjustedAllowablePressure = baseAllowablePressure * gfHigh;
+                
+                const ceiling = Math.max(0, (totalInertGas - adjustedAllowablePressure - this.surfacePressure) * 10);
                 
                 maxCeiling = Math.max(maxCeiling, ceiling);
             });
@@ -552,15 +619,19 @@
         switch(type.toLowerCase()) {
             case 'buhlmann':
                 return new BuhlmannModel(
-                    (options.gradientFactorLow || 30) / 100,
-                    (options.gradientFactorHigh || 85) / 100
+                    options.gradientFactorLow || 30,
+                    options.gradientFactorHigh || 85
                 );
             case 'vpmb':
                 return new VpmBModel(options.conservatism || 2);
             case 'bvm':
                 return new BvmModel(options.conservatism || 2);
             case 'vval18':
-                return new VVal18ThalmannModel(options.dcsRiskPercent || 2.3);
+                return new VVal18ThalmannModel({
+                    dcsRiskPercent: options.dcsRiskPercent || 2.3,
+                    gradientFactorLow: options.gradientFactorLow || 30,
+                    gradientFactorHigh: options.gradientFactorHigh || 85
+                });
             default:
                 throw new Error('Unknown model type: ' + type);
         }
