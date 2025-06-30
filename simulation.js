@@ -15,6 +15,7 @@ class DiveSimulator {
         
         // Chart instances
         this.tissueChart = null;
+        this.detailedTissueChart = null;
         this.profileChart = null;
         this.riskChart = null;
         
@@ -139,10 +140,20 @@ class DiveSimulator {
                 const activeChart = document.getElementById(chartId);
                 activeChart.classList.add('active');
                 
+                // Show/hide model selector for detailed tissue view
+                const modelSelector = document.getElementById('detailed-model-selector');
+                if (chartId === 'detailed-tissue-chart') {
+                    modelSelector.style.display = 'block';
+                } else {
+                    modelSelector.style.display = 'none';
+                }
+                
                 // Resize the Chart.js instance when it becomes visible
                 setTimeout(() => {
                     if (chartId === 'tissue-loading-chart' && this.tissueChart) {
                         this.tissueChart.resize();
+                    } else if (chartId === 'detailed-tissue-chart' && this.detailedTissueChart) {
+                        this.detailedTissueChart.resize();
                     } else if (chartId === 'dive-profile-chart' && this.profileChart) {
                         this.profileChart.resize();
                     } else if (chartId === 'dcs-risk-chart' && this.riskChart) {
@@ -150,6 +161,12 @@ class DiveSimulator {
                     }
                 }, 100); // Small delay to ensure the visibility transition completes
             });
+        });
+        
+        // Detailed tissue model selector
+        document.getElementById('detailed-model-select').addEventListener('change', (e) => {
+            this.selectedDetailedModel = e.target.value;
+            this.updateDetailedTissueChart();
         });
     }
     
@@ -366,6 +383,92 @@ class DiveSimulator {
                 }
             }
         });
+        
+        // Detailed Tissue Loading Chart
+        const detailedTissueCtx = document.getElementById('detailed-tissue-chart').getContext('2d');
+        
+        // Generate datasets for all 16 tissue compartments
+        const compartmentDatasets = [];
+        const compartmentColors = [
+            '#ff4444', '#ff6644', '#ff8844', '#ffaa44',
+            '#ffcc44', '#ffee44', '#ddff44', '#bbff44',
+            '#99ff44', '#77ff44', '#55ff44', '#33ff44',
+            '#44ff77', '#44ff99', '#44ffbb', '#44ffdd'
+        ];
+        
+        // Create datasets for each tissue compartment
+        for (let i = 0; i < 16; i++) {
+            compartmentDatasets.push({
+                label: `Compartment ${i + 1}`,
+                data: [],
+                borderColor: compartmentColors[i],
+                backgroundColor: compartmentColors[i] + '20',
+                tension: 0.4,
+                pointRadius: 0,
+                borderWidth: 1.5
+            });
+        }
+        
+        // Add ambient pressure line
+        compartmentDatasets.push({
+            label: 'Ambient Pressure',
+            data: [],
+            borderColor: '#ffffff',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderDash: [5, 5],
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
+        });
+        
+        this.detailedTissueChart = new Chart(detailedTissueCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: compartmentDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Detailed Tissue Loading - All Compartments',
+                        color: '#e2e8f0'
+                    },
+                    legend: {
+                        display: false // Too many compartments, hide legend
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (minutes)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: 'rgba(226, 232, 240, 0.1)' }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Pressure (bar)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: 'rgba(226, 232, 240, 0.1)' }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Current selected model for detailed view
+        this.selectedDetailedModel = 'buhlmann';
     }
     
     setDepth(newDepth) {
@@ -454,6 +557,11 @@ class DiveSimulator {
         this.riskChart.data.datasets[0].data = [0, 0, 0, 0];
         this.riskChart.update();
         
+        // Clear detailed tissue chart
+        this.detailedTissueChart.data.labels = [];
+        this.detailedTissueChart.data.datasets.forEach(dataset => dataset.data = []);
+        this.detailedTissueChart.update();
+        
         this.updateDisplay();
         
         // Record initial data point after reset
@@ -491,9 +599,11 @@ class DiveSimulator {
     }
     
     recordDiveHistory() {
+        const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
         const historyPoint = {
             time: this.diveTime,
             depth: this.currentDepth,
+            ambientPressure: ambientPressure,
             gasMix: { ...this.currentGasMix },
             models: {}
         };
@@ -645,6 +755,9 @@ class DiveSimulator {
         this.riskChart.data.datasets[0].data = currentRisks;
         this.riskChart.update('none');
         
+        // Update detailed tissue chart
+        this.updateDetailedTissueChart();
+        
         console.log(`Updated charts with ${this.diveHistory.length} data points`);
     }
     
@@ -666,6 +779,80 @@ class DiveSimulator {
         // Convert to percentage (simplified formula)
         const risk = Math.min(10, totalSupersaturation * 2);
         return Math.round(risk * 10) / 10; // Round to 1 decimal place
+    }
+    
+    updateDetailedTissueChart() {
+        if (this.diveHistory.length === 0 || !this.detailedTissueChart) {
+            return;
+        }
+        
+        const timeLabels = this.diveHistory.map(h => Math.round(h.time * 10) / 10);
+        this.detailedTissueChart.data.labels = timeLabels;
+        
+        const selectedModel = this.selectedDetailedModel;
+        
+        // Update each tissue compartment dataset (16 compartments)
+        for (let compartmentIndex = 0; compartmentIndex < 16; compartmentIndex++) {
+            this.detailedTissueChart.data.datasets[compartmentIndex].data = this.diveHistory.map(h => {
+                if (!h.models[selectedModel] || !h.models[selectedModel].tissueLoadings) {
+                    return 1.013;
+                }
+                return h.models[selectedModel].tissueLoadings[compartmentIndex] || 1.013;
+            });
+        }
+        
+        // Update ambient pressure line (dataset index 16)
+        this.detailedTissueChart.data.datasets[16].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        
+        // Update chart title to show selected model
+        const modelNames = {
+            buhlmann: 'Bühlmann ZH-L16C',
+            vpmb: 'VPM-B',
+            bvm: 'BVM(3)',
+            vval18: 'VVal-18 Thalmann'
+        };
+        this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]}`;
+        
+        // Color compartments showing supersaturation differently
+        this.updateCompartmentSupersaturationColors();
+        
+        this.detailedTissueChart.update('none');
+    }
+    
+    updateCompartmentSupersaturationColors() {
+        if (this.diveHistory.length === 0) return;
+        
+        const latestHistory = this.diveHistory[this.diveHistory.length - 1];
+        const selectedModel = this.selectedDetailedModel;
+        const ambientPressure = latestHistory.ambientPressure || 1.013;
+        
+        // Check each compartment for supersaturation
+        for (let i = 0; i < 16; i++) {
+            const compartmentPressure = latestHistory.models[selectedModel]?.tissueLoadings[i] || 1.013;
+            const isSupersaturated = compartmentPressure > ambientPressure;
+            
+            if (isSupersaturated) {
+                // Use brighter, more saturated colors for supersaturated compartments
+                const supersaturatedColors = [
+                    '#ff0000', '#ff3300', '#ff6600', '#ff9900',
+                    '#ffcc00', '#ffff00', '#ccff00', '#99ff00',
+                    '#66ff00', '#33ff00', '#00ff33', '#00ff66',
+                    '#00ff99', '#00ffcc', '#00ffff', '#00ccff'
+                ];
+                this.detailedTissueChart.data.datasets[i].borderColor = supersaturatedColors[i];
+                this.detailedTissueChart.data.datasets[i].borderWidth = 2.5;
+            } else {
+                // Use original muted colors for normal compartments
+                const normalColors = [
+                    '#ff4444', '#ff6644', '#ff8844', '#ffaa44',
+                    '#ffcc44', '#ffee44', '#ddff44', '#bbff44',
+                    '#99ff44', '#77ff44', '#55ff44', '#33ff44',
+                    '#44ff77', '#44ff99', '#44ffbb', '#44ffdd'
+                ];
+                this.detailedTissueChart.data.datasets[i].borderColor = normalColors[i];
+                this.detailedTissueChart.data.datasets[i].borderWidth = 1.5;
+            }
+        }
     }
 }
 
