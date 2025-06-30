@@ -10,11 +10,12 @@ class DiveSimulator {
         this.enabledModels = {
             buhlmann: true,
             vpmb: true,
-            bvm: false,
-            vval18: false,
-            rgbm: false,
-            tbdm: false,
-            nmri98: false
+            bvm: true,
+            vval18: true,
+            rgbm: true,
+            tbdm: true,
+            nmri98: true,
+            hills: true
         };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
@@ -52,6 +53,12 @@ class DiveSimulator {
         this.nmri98MaxDcsRisk = 2.0; // Default maximum DCS risk percentage
         this.nmri98SafetyFactor = 1.2; // Default safety factor
         this.nmri98EnableOxygenTracking = true; // Default oxygen tracking enabled
+        
+        // Hills (Thermodynamic) settings
+        this.hillsConservatismFactor = 1.0; // Default Hills conservatism factor
+        this.hillsCoreTemperature = 37.0; // Default core temperature (°C)
+        this.hillsMetabolicRate = 1.2; // Default metabolic rate (W/kg)
+        this.hillsPerfusionMultiplier = 1.0; // Default perfusion multiplier
         
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
@@ -99,6 +106,12 @@ class DiveSimulator {
                     maxDcsRisk: this.nmri98MaxDcsRisk,
                     safetyFactor: this.nmri98SafetyFactor,
                     enableOxygenTracking: this.nmri98EnableOxygenTracking
+                }),
+                hills: window.DecompressionSimulator.createModel('hills', {
+                    conservatismFactor: this.hillsConservatismFactor,
+                    coreTemperature: this.hillsCoreTemperature,
+                    metabolicRate: this.hillsMetabolicRate,
+                    perfusionMultiplier: this.hillsPerfusionMultiplier
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -281,6 +294,11 @@ class DiveSimulator {
             this.enabledModels.nmri98 = e.target.checked;
             this.updateModelVisibility();
         });
+        
+        document.getElementById('model-hills').addEventListener('change', (e) => {
+            this.enabledModels.hills = e.target.checked;
+            this.updateModelVisibility();
+        });
     }
     
     setZoomMode(mode) {
@@ -398,7 +416,8 @@ class DiveSimulator {
             vval18: 'VVal-18 Thalmann',
             rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
-            nmri98: 'NMRI98 LEM'
+            nmri98: 'NMRI98 LEM',
+            hills: 'Thermodynamic (Hills)'
         };
         
         let foundValidOption = false;
@@ -557,6 +576,20 @@ class DiveSimulator {
                         tension: 0.4
                     },
                     {
+                        label: 'Hills - Fast Tissues',
+                        data: [],
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Hills - Slow Tissues',
+                        data: [],
+                        borderColor: '#0891b2',
+                        backgroundColor: 'rgba(8, 145, 178, 0.1)',
+                        tension: 0.4
+                    },
+                    {
                         label: 'Ambient Pressure',
                         data: [],
                         borderColor: '#ffffff',
@@ -691,6 +724,15 @@ class DiveSimulator {
                         borderDash: [10, 5],
                         tension: 0.2,
                         yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (Hills)',
+                        data: [],
+                        borderColor: '#0d9488',
+                        backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                        borderDash: [8, 4],
+                        tension: 0.2,
+                        yAxisID: 'depth'
                     }
                 ]
             },
@@ -802,6 +844,14 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#8b5cf6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'Hills Risk (%)',
+                        data: [],
+                        borderColor: '#0d9488',
+                        backgroundColor: 'rgba(13, 148, 136, 0.1)',
                         tension: 0.3,
                         yAxisID: 'risk'
                     },
@@ -1375,6 +1425,86 @@ class DiveSimulator {
         console.log(`NMRI98 oxygen tracking ${enableOxygenTracking ? 'enabled' : 'disabled'}`);
     }
     
+    updateHillsConservatismFactor(newConservatismFactor) {
+        this.hillsConservatismFactor = newConservatismFactor;
+        
+        // Update Hills model with new conservatism factor
+        this.updateModelWithNewParameters(
+            'hills', 
+            'hills', 
+            { 
+                conservatismFactor: newConservatismFactor,
+                coreTemperature: this.hillsCoreTemperature,
+                metabolicRate: this.hillsMetabolicRate,
+                perfusionMultiplier: this.hillsPerfusionMultiplier
+            },
+            '#hills-result h4',
+            `Thermodynamic (Hills) - CF: ${newConservatismFactor.toFixed(1)}`
+        );
+        
+        console.log(`Hills conservatism factor updated to ${newConservatismFactor}`);
+    }
+    
+    updateHillsCoreTemperature(newCoreTemp) {
+        this.hillsCoreTemperature = newCoreTemp;
+        
+        // Update Hills model with new core temperature
+        this.updateModelWithNewParameters(
+            'hills', 
+            'hills', 
+            { 
+                conservatismFactor: this.hillsConservatismFactor,
+                coreTemperature: newCoreTemp,
+                metabolicRate: this.hillsMetabolicRate,
+                perfusionMultiplier: this.hillsPerfusionMultiplier
+            },
+            '#hills-result h4',
+            `Thermodynamic (Hills) - Temp: ${newCoreTemp.toFixed(1)}°C`
+        );
+        
+        console.log(`Hills core temperature updated to ${newCoreTemp}°C`);
+    }
+    
+    updateHillsMetabolicRate(newMetabolicRate) {
+        this.hillsMetabolicRate = newMetabolicRate;
+        
+        // Update Hills model with new metabolic rate
+        this.updateModelWithNewParameters(
+            'hills', 
+            'hills', 
+            { 
+                conservatismFactor: this.hillsConservatismFactor,
+                coreTemperature: this.hillsCoreTemperature,
+                metabolicRate: newMetabolicRate,
+                perfusionMultiplier: this.hillsPerfusionMultiplier
+            },
+            '#hills-result h4',
+            `Thermodynamic (Hills) - MR: ${newMetabolicRate.toFixed(1)} W/kg`
+        );
+        
+        console.log(`Hills metabolic rate updated to ${newMetabolicRate} W/kg`);
+    }
+    
+    updateHillsPerfusionMultiplier(newPerfusion) {
+        this.hillsPerfusionMultiplier = newPerfusion;
+        
+        // Update Hills model with new perfusion multiplier
+        this.updateModelWithNewParameters(
+            'hills', 
+            'hills', 
+            { 
+                conservatismFactor: this.hillsConservatismFactor,
+                coreTemperature: this.hillsCoreTemperature,
+                metabolicRate: this.hillsMetabolicRate,
+                perfusionMultiplier: newPerfusion
+            },
+            '#hills-result h4',
+            `Thermodynamic (Hills) - PF: ${newPerfusion.toFixed(1)}`
+        );
+        
+        console.log(`Hills perfusion multiplier updated to ${newPerfusion}`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -1387,6 +1517,7 @@ class DiveSimulator {
         const rgbmPanel = document.getElementById('rgbm-settings');
         const tbdmPanel = document.getElementById('tbdm-settings');
         const nmri98Panel = document.getElementById('nmri98-settings');
+        const hillsPanel = document.getElementById('hills-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -1398,6 +1529,7 @@ class DiveSimulator {
             rgbmPanel.style.display = 'none';
             tbdmPanel.style.display = 'none';
             nmri98Panel.style.display = 'none';
+            hillsPanel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -1421,6 +1553,9 @@ class DiveSimulator {
                     break;
                 case 'nmri98':
                     nmri98Panel.style.display = 'block';
+                    break;
+                case 'hills':
+                    hillsPanel.style.display = 'block';
                     break;
             }
         };
@@ -1527,6 +1662,40 @@ class DiveSimulator {
         nmri98OxygenTrackingCheckbox.addEventListener('change', (e) => {
             this.updateNmri98OxygenTracking(e.target.checked);
         });
+        
+        // Hills (Thermodynamic) controls
+        const hillsConservatismSlider = document.getElementById('unified-hills-conservatism');
+        const hillsConservatismDisplay = document.getElementById('unified-hills-conservatism-display');
+        const hillsCoreTempSlider = document.getElementById('unified-hills-core-temp');
+        const hillsCoreTempDisplay = document.getElementById('unified-hills-core-temp-display');
+        const hillsMetabolicRateSlider = document.getElementById('unified-hills-metabolic-rate');
+        const hillsMetabolicRateDisplay = document.getElementById('unified-hills-metabolic-rate-display');
+        const hillsPerfusionSlider = document.getElementById('unified-hills-perfusion');
+        const hillsPerfusionDisplay = document.getElementById('unified-hills-perfusion-display');
+
+        hillsConservatismSlider.addEventListener('input', (e) => {
+            const newConservatismFactor = parseFloat(e.target.value);
+            hillsConservatismDisplay.textContent = newConservatismFactor.toFixed(1);
+            this.updateHillsConservatismFactor(newConservatismFactor);
+        });
+
+        hillsCoreTempSlider.addEventListener('input', (e) => {
+            const newCoreTemp = parseFloat(e.target.value);
+            hillsCoreTempDisplay.textContent = newCoreTemp.toFixed(1);
+            this.updateHillsCoreTemperature(newCoreTemp);
+        });
+
+        hillsMetabolicRateSlider.addEventListener('input', (e) => {
+            const newMetabolicRate = parseFloat(e.target.value);
+            hillsMetabolicRateDisplay.textContent = newMetabolicRate.toFixed(1);
+            this.updateHillsMetabolicRate(newMetabolicRate);
+        });
+
+        hillsPerfusionSlider.addEventListener('input', (e) => {
+            const newPerfusion = parseFloat(e.target.value);
+            hillsPerfusionDisplay.textContent = newPerfusion.toFixed(1);
+            this.updateHillsPerfusionMultiplier(newPerfusion);
+        });
     }
     
     startSimulation() {
@@ -1576,6 +1745,10 @@ class DiveSimulator {
         this.nmri98MaxDcsRisk = 2.0;
         this.nmri98SafetyFactor = 1.2;
         this.nmri98EnableOxygenTracking = true;
+        this.hillsConservatismFactor = 1.0;
+        this.hillsCoreTemperature = 37.0;
+        this.hillsMetabolicRate = 1.2;
+        this.hillsPerfusionMultiplier = 1.0;
         
         // Reset unified model settings controls
         document.getElementById('unified-vpm-conservatism').value = 2;
@@ -1613,6 +1786,16 @@ class DiveSimulator {
         document.getElementById('unified-tbdm-body-temp').value = 37.0;
         document.getElementById('unified-tbdm-body-temp-display').textContent = '37.0';
         
+        // Reset Hills controls
+        document.getElementById('unified-hills-conservatism').value = 1.0;
+        document.getElementById('unified-hills-conservatism-display').textContent = '1.0';
+        document.getElementById('unified-hills-core-temp').value = 37.0;
+        document.getElementById('unified-hills-core-temp-display').textContent = '37.0';
+        document.getElementById('unified-hills-metabolic-rate').value = 1.2;
+        document.getElementById('unified-hills-metabolic-rate-display').textContent = '1.2';
+        document.getElementById('unified-hills-perfusion').value = 1.0;
+        document.getElementById('unified-hills-perfusion-display').textContent = '1.0';
+        
         // Reset model titles to default
         document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
@@ -1624,6 +1807,8 @@ class DiveSimulator {
         document.getElementById('tbdm-title').textContent = 'TBDM CF:1.0';
         document.getElementById('tbdm-schedule-title').textContent = 'TBDM CF:1.0';
         document.getElementById('nmri98-result').querySelector('h4').textContent = 'NMRI98 LEM';
+        document.getElementById('hills-title').textContent = 'Thermodynamic (Hills)';
+        document.getElementById('hills-schedule-title').textContent = 'Thermodynamic (Hills)';
         
         // Reset zoom to full view
         this.zoomMode = 'full';
@@ -1962,8 +2147,26 @@ class DiveSimulator {
             return h.models.nmri98.tissueLoadings[2];
         });
         
-        // Ambient pressure overlay - Dataset 14
-        this.tissueChart.data.datasets[14].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        // Hills fast tissues (compartment 1 - Fast: 2.5 min) - Dataset 14
+        this.tissueChart.data.datasets[14].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[14].data = zoomedHistory.map(h => {
+            if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[0]) {
+                return 1.013;
+            }
+            return h.models.hills.tissueLoadings[0];
+        });
+        
+        // Hills slow tissues (compartment 16 - Slow: 498 min) - Dataset 15
+        this.tissueChart.data.datasets[15].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[15].data = zoomedHistory.map(h => {
+            if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[15]) {
+                return 1.013;
+            }
+            return h.models.hills.tissueLoadings[15];
+        });
+        
+        // Ambient pressure overlay - Dataset 16
+        this.tissueChart.data.datasets[16].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
         
@@ -2012,6 +2215,12 @@ class DiveSimulator {
         this.profileChart.data.datasets[7].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.ceiling : 0
         );
+        
+        // Hills ceiling - Dataset 8
+        this.profileChart.data.datasets[8].hidden = !this.enabledModels.hills;
+        this.profileChart.data.datasets[8].data = zoomedHistory.map(h => 
+            h.models.hills ? h.models.hills.ceiling : 0
+        );
         this.profileChart.update('default');
         
         // Update DCS risk chart using model-specific calculations
@@ -2059,8 +2268,14 @@ class DiveSimulator {
             h.models.nmri98 ? h.models.nmri98.risk : 0
         );
         
-        // Dive profile overlay - Dataset 7 (always visible)
-        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => h.depth);
+        // Hills risk over time - Dataset 7
+        this.riskChart.data.datasets[7].hidden = !this.enabledModels.hills;
+        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => 
+            h.models.hills ? h.models.hills.risk : 0
+        );
+        
+        // Dive profile overlay - Dataset 8 (always visible)
+        this.riskChart.data.datasets[8].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('default');
         
@@ -2143,7 +2358,8 @@ class DiveSimulator {
                 vval18: 3,
                 rgbm: 16,
                 tbdm: 16,
-                nmri98: 3
+                nmri98: 3,
+                hills: 16
             };
             compartmentCount = modelDefaults[selectedModel] || 16;
         }
@@ -2192,7 +2408,8 @@ class DiveSimulator {
             vval18: 'VVal-18 Thalmann',
             rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
-            nmri98: 'NMRI98 LEM'
+            nmri98: 'NMRI98 LEM',
+            hills: 'Thermodynamic (Hills)'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
