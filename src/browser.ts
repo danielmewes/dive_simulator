@@ -72,6 +72,7 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         safetyFactor: options.safetyFactor || 1.2,
         enableOxygenTracking: options.enableOxygenTracking !== false
       });
+      break;
     case 'hills':
       return new HillsModel({
         conservatismFactor: options.conservatismFactor || 1.0,
