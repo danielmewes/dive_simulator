@@ -147,6 +147,30 @@
             });
         }
         
+        getGradientFactors() {
+            return {
+                low: this.gradientFactorLow * 100,  // Convert to percentage
+                high: this.gradientFactorHigh * 100
+            };
+        }
+        
+        setGradientFactors(gradientFactors) {
+            this.gradientFactorLow = gradientFactors.low / 100;  // Convert from percentage
+            this.gradientFactorHigh = gradientFactors.high / 100;
+        }
+        
+        calculateGradientFactorAtDepth(depth) {
+            // Linear interpolation between GF Low and GF High
+            // GF Low applies at first deco stop, GF High at surface
+            const firstDecoDepth = 3; // Assuming 3m first deco stop
+            if (depth >= firstDecoDepth) {
+                return this.gradientFactorLow;
+            } else {
+                const ratio = depth / firstDecoDepth;
+                return this.gradientFactorHigh + ratio * (this.gradientFactorLow - this.gradientFactorHigh);
+            }
+        }
+        
         calculateCeiling() {
             let maxCeiling = 0;
             
@@ -156,7 +180,9 @@
                 const b = compartment.b;
                 
                 // Calculate M-value with gradient factors
-                const mValue = (totalInertGas - a) * b;
+                // At surface, use GF High; this is simplified - proper implementation would interpolate
+                const gf = this.gradientFactorHigh;
+                const mValue = (totalInertGas - a * gf) / (gf - 1 + (b * gf));
                 const ceiling = Math.max(0, (mValue - this.surfacePressure) * 10);
                 
                 maxCeiling = Math.max(maxCeiling, ceiling);
@@ -394,9 +420,18 @@
     
     // === VVal-18 Thalmann Model ===
     class VVal18ThalmannModel extends DecompressionModel {
-        constructor(dcsRiskPercent = 2.3) {
+        constructor(options = {}) {
             super();
-            this.dcsRiskPercent = dcsRiskPercent;
+            // Handle legacy single parameter or new options object
+            if (typeof options === 'number') {
+                this.dcsRiskPercent = options;
+                this.gradientFactorLow = 30;
+                this.gradientFactorHigh = 85;
+            } else {
+                this.dcsRiskPercent = options.dcsRiskPercent || 2.3;
+                this.gradientFactorLow = options.gradientFactorLow || 30;
+                this.gradientFactorHigh = options.gradientFactorHigh || 85;
+            }
             this.initializeTissueCompartments();
         }
         
@@ -461,15 +496,44 @@
             });
         }
         
+        getGradientFactors() {
+            return {
+                low: this.gradientFactorLow,
+                high: this.gradientFactorHigh
+            };
+        }
+        
+        setGradientFactors(gradientFactors) {
+            this.gradientFactorLow = gradientFactors.low;
+            this.gradientFactorHigh = gradientFactors.high;
+        }
+        
+        calculateGradientFactorAtDepth(depth) {
+            // Linear interpolation between GF Low and GF High
+            // GF Low applies at first deco stop, GF High at surface
+            const firstDecoDepth = 3; // Assuming 3m first deco stop
+            if (depth >= firstDecoDepth) {
+                return this.gradientFactorLow;
+            } else {
+                const ratio = depth / firstDecoDepth;
+                return this.gradientFactorHigh + ratio * (this.gradientFactorLow - this.gradientFactorHigh);
+            }
+        }
+        
         calculateCeiling() {
             let maxCeiling = 0;
             
             this.tissueCompartments.forEach(compartment => {
                 const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
                 
-                // Thalmann linear-exponential calculation (simplified)
-                const allowablePressure = compartment.slope * this.currentDiveState.ambientPressure + compartment.intercept;
-                const ceiling = Math.max(0, (totalInertGas - allowablePressure - this.surfacePressure) * 10);
+                // Thalmann linear-exponential calculation with gradient factors
+                const baseAllowablePressure = compartment.slope * this.currentDiveState.ambientPressure + compartment.intercept;
+                
+                // Apply gradient factors (convert percentage to decimal)
+                const gfHigh = this.gradientFactorHigh / 100;
+                const adjustedAllowablePressure = baseAllowablePressure * gfHigh;
+                
+                const ceiling = Math.max(0, (totalInertGas - adjustedAllowablePressure - this.surfacePressure) * 10);
                 
                 maxCeiling = Math.max(maxCeiling, ceiling);
             });
@@ -534,7 +598,11 @@
             case 'bvm':
                 return new BvmModel(options.conservatism || 2);
             case 'vval18':
-                return new VVal18ThalmannModel(options.dcsRiskPercent || 2.3);
+                return new VVal18ThalmannModel({
+                    dcsRiskPercent: options.dcsRiskPercent || 2.3,
+                    gradientFactorLow: options.gradientFactorLow || 30,
+                    gradientFactorHigh: options.gradientFactorHigh || 85
+                });
             default:
                 throw new Error('Unknown model type: ' + type);
         }

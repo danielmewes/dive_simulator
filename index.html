@@ -96,6 +96,52 @@
                         </div>
                     </div>
 
+                    <!-- Bühlmann Gradient Factor Control -->
+                    <div class="control-group">
+                        <h4>⚙️ Bühlmann Gradient Factors</h4>
+                        <div class="gradient-factor-controls">
+                            <div class="gradient-factor-control">
+                                <label for="buhlmann-gf-low">GF Low: <span id="buhlmann-gf-low-display">30</span>%</label>
+                                <input type="range" id="buhlmann-gf-low" min="10" max="50" value="30" step="5">
+                                <div class="gradient-factor-labels">
+                                    <span>10% (Aggressive)</span>
+                                    <span>50% (Conservative)</span>
+                                </div>
+                            </div>
+                            <div class="gradient-factor-control">
+                                <label for="buhlmann-gf-high">GF High: <span id="buhlmann-gf-high-display">85</span>%</label>
+                                <input type="range" id="buhlmann-gf-high" min="60" max="100" value="85" step="5">
+                                <div class="gradient-factor-labels">
+                                    <span>60% (Aggressive)</span>
+                                    <span>100% (Conservative)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VVal-18 Gradient Factor Control -->
+                    <div class="control-group">
+                        <h4>⚙️ VVal-18 Gradient Factors</h4>
+                        <div class="gradient-factor-controls">
+                            <div class="gradient-factor-control">
+                                <label for="vval18-gf-low">GF Low: <span id="vval18-gf-low-display">30</span>%</label>
+                                <input type="range" id="vval18-gf-low" min="10" max="50" value="30" step="5">
+                                <div class="gradient-factor-labels">
+                                    <span>10% (Aggressive)</span>
+                                    <span>50% (Conservative)</span>
+                                </div>
+                            </div>
+                            <div class="gradient-factor-control">
+                                <label for="vval18-gf-high">GF High: <span id="vval18-gf-high-display">85</span>%</label>
+                                <input type="range" id="vval18-gf-high" min="60" max="100" value="85" step="5">
+                                <div class="gradient-factor-labels">
+                                    <span>60% (Aggressive)</span>
+                                    <span>100% (Conservative)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Reset Controls -->
                     <div class="control-group">
                         <button id="reset-dive" class="reset-button">🔄 Reset Dive</button>

@@ -24,6 +24,10 @@ class DiveSimulator {
         this.currentGasMix = { oxygen: 21, helium: 0 };
         this.vpmConservatism = 2; // Default VPM conservatism level
         
+        // Gradient factor settings
+        this.buhlmannGradientFactors = { low: 30, high: 85 };
+        this.vval18GradientFactors = { low: 30, high: 85 };
+        
         this.initializeModels();
         this.initializeEventListeners();
         this.initializeCharts();
@@ -39,10 +43,16 @@ class DiveSimulator {
     initializeModels() {
         try {
             this.models = {
-                buhlmann: window.DecompressionSimulator.createModel('buhlmann'),
+                buhlmann: window.DecompressionSimulator.createModel('buhlmann', { 
+                    gradientFactorLow: this.buhlmannGradientFactors.low, 
+                    gradientFactorHigh: this.buhlmannGradientFactors.high 
+                }),
                 vpmb: window.DecompressionSimulator.createModel('vpmb', { conservatism: this.vpmConservatism }),
                 bvm: window.DecompressionSimulator.createModel('bvm'),
-                vval18: window.DecompressionSimulator.createModel('vval18')
+                vval18: window.DecompressionSimulator.createModel('vval18', { 
+                    gradientFactorLow: this.vval18GradientFactors.low, 
+                    gradientFactorHigh: this.vval18GradientFactors.high 
+                })
             };
             console.log('✅ Decompression models initialized successfully');
         } catch (error) {
@@ -137,6 +147,42 @@ class DiveSimulator {
             const newConservatism = parseInt(e.target.value);
             vpmConservatismDisplay.textContent = newConservatism;
             this.updateVpmConservatism(newConservatism);
+        });
+        
+        // Bühlmann gradient factor controls
+        const buhlmannGfLowSlider = document.getElementById('buhlmann-gf-low');
+        const buhlmannGfLowDisplay = document.getElementById('buhlmann-gf-low-display');
+        const buhlmannGfHighSlider = document.getElementById('buhlmann-gf-high');
+        const buhlmannGfHighDisplay = document.getElementById('buhlmann-gf-high-display');
+        
+        buhlmannGfLowSlider.addEventListener('input', (e) => {
+            const newGfLow = parseInt(e.target.value);
+            buhlmannGfLowDisplay.textContent = newGfLow;
+            this.updateBuhlmannGradientFactors(newGfLow, this.buhlmannGradientFactors.high);
+        });
+        
+        buhlmannGfHighSlider.addEventListener('input', (e) => {
+            const newGfHigh = parseInt(e.target.value);
+            buhlmannGfHighDisplay.textContent = newGfHigh;
+            this.updateBuhlmannGradientFactors(this.buhlmannGradientFactors.low, newGfHigh);
+        });
+        
+        // VVal-18 gradient factor controls
+        const vval18GfLowSlider = document.getElementById('vval18-gf-low');
+        const vval18GfLowDisplay = document.getElementById('vval18-gf-low-display');
+        const vval18GfHighSlider = document.getElementById('vval18-gf-high');
+        const vval18GfHighDisplay = document.getElementById('vval18-gf-high-display');
+        
+        vval18GfLowSlider.addEventListener('input', (e) => {
+            const newGfLow = parseInt(e.target.value);
+            vval18GfLowDisplay.textContent = newGfLow;
+            this.updateVval18GradientFactors(newGfLow, this.vval18GradientFactors.high);
+        });
+        
+        vval18GfHighSlider.addEventListener('input', (e) => {
+            const newGfHigh = parseInt(e.target.value);
+            vval18GfHighDisplay.textContent = newGfHigh;
+            this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
         });
         
         // Chart tabs
@@ -471,6 +517,76 @@ class DiveSimulator {
         this.updateDisplay();
         this.updateCharts();
         console.log(`VPM-B conservatism updated to ${newConservatism}`);
+    }
+    
+    updateBuhlmannGradientFactors(newGfLow, newGfHigh) {
+        this.buhlmannGradientFactors = { low: newGfLow, high: newGfHigh };
+        
+        // Recreate the Bühlmann model with new gradient factors
+        const oldModel = this.models.buhlmann;
+        this.models.buhlmann = window.DecompressionSimulator.createModel('buhlmann', { 
+            gradientFactorLow: newGfLow, 
+            gradientFactorHigh: newGfHigh 
+        });
+        
+        // Copy current state from old model to new model
+        if (oldModel) {
+            const currentState = oldModel.getDiveState();
+            this.models.buhlmann.updateDiveState(currentState);
+            
+            // Copy tissue loadings if possible
+            const oldCompartments = oldModel.getTissueCompartments();
+            const newCompartments = this.models.buhlmann.getTissueCompartments();
+            
+            if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
+                for (let i = 0; i < oldCompartments.length; i++) {
+                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
+                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
+                }
+            }
+        }
+        
+        // Update Bühlmann title to show gradient factors
+        document.getElementById('buhlmann-result').querySelector('h4').textContent = `Bühlmann (${newGfLow}/${newGfHigh})`;
+        
+        this.updateDisplay();
+        this.updateCharts();
+        console.log(`Bühlmann gradient factors updated to ${newGfLow}/${newGfHigh}`);
+    }
+    
+    updateVval18GradientFactors(newGfLow, newGfHigh) {
+        this.vval18GradientFactors = { low: newGfLow, high: newGfHigh };
+        
+        // Recreate the VVal-18 model with new gradient factors
+        const oldModel = this.models.vval18;
+        this.models.vval18 = window.DecompressionSimulator.createModel('vval18', { 
+            gradientFactorLow: newGfLow, 
+            gradientFactorHigh: newGfHigh 
+        });
+        
+        // Copy current state from old model to new model
+        if (oldModel) {
+            const currentState = oldModel.getDiveState();
+            this.models.vval18.updateDiveState(currentState);
+            
+            // Copy tissue loadings if possible
+            const oldCompartments = oldModel.getTissueCompartments();
+            const newCompartments = this.models.vval18.getTissueCompartments();
+            
+            if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
+                for (let i = 0; i < oldCompartments.length; i++) {
+                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
+                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
+                }
+            }
+        }
+        
+        // Update VVal-18 title to show gradient factors
+        document.getElementById('vval18-result').querySelector('h4').textContent = `VVal-18 (${newGfLow}/${newGfHigh})`;
+        
+        this.updateDisplay();
+        this.updateCharts();
+        console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
     startSimulation() {
