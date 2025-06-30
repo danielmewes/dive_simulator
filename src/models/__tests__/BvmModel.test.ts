@@ -407,4 +407,46 @@ describe('BvmModel', () => {
       expect(() => bvmModel.updateTissueLoadings(1000)).not.toThrow();
     });
   });
+
+  describe('DCS Risk Calculation', () => {
+    test('should calculate DCS risk based on bubble volumes', () => {
+      const bvmModel = new BvmModel(3);
+      
+      // Surface conditions should have minimal risk
+      const surfaceRisk = bvmModel.calculateDCSRisk();
+      expect(surfaceRisk).toBeGreaterThanOrEqual(0);
+      expect(surfaceRisk).toBeLessThan(5); // Should be very low at surface
+      
+      // After some dive time, risk might increase
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+      
+      bvmModel.updateDiveState({ depth: 30, gasMix: airMix });
+      bvmModel.updateTissueLoadings(20); // 20 minutes at depth
+      
+      const diveRisk = bvmModel.calculateDCSRisk();
+      expect(diveRisk).toBeGreaterThanOrEqual(0);
+      expect(diveRisk).toBeLessThanOrEqual(100); // Should be within percentage range
+    });
+
+    test('should use literature-based calculation via calculateTotalDcsRisk', () => {
+      const bvmModel = new BvmModel(3);
+      
+      // The BVM(3) model should use bubble volume-based calculation
+      // Verify that calculateDCSRisk returns the same pattern as calculateTotalDcsRisk
+      const directRisk = bvmModel.calculateTotalDcsRisk();
+      const interfaceRisk = bvmModel.calculateDCSRisk();
+      
+      // Both should be related (interface method scales total risk to percentage)
+      expect(typeof interfaceRisk).toBe('number');
+      expect(interfaceRisk).toBeGreaterThanOrEqual(0);
+      
+      // Verify the relationship: interface risk should be total risk scaled to percentage
+      const expectedRisk = Math.min(100, directRisk * 100);
+      expect(Math.abs(interfaceRisk - Math.round(expectedRisk * 10) / 10)).toBeLessThan(0.1);
+    });
+  });
 });
