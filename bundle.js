@@ -1087,6 +1087,31 @@
             });
         }
         
+        getRgbmCompartmentData(compartmentNumber) {
+            if (compartmentNumber < 1 || compartmentNumber > 16) {
+                throw new Error('Compartment number must be between 1 and 16');
+            }
+            
+            const compartment = this.rgbmCompartments[compartmentNumber - 1];
+            if (!compartment) {
+                throw new Error(`RGBM compartment ${compartmentNumber} not found`);
+            }
+            return { ...compartment };
+        }
+        
+        getTotalBubbleVolume() {
+            return this.totalBubbleVolume;
+        }
+        
+        getRgbmSettings() {
+            return { ...this.settings };
+        }
+        
+        setRepetitiveDiveParams(diveCount, surfaceTimeHours) {
+            this.diveCount = Math.max(1, diveCount);
+            this.lastSurfaceTime = Math.max(0, surfaceTimeHours);
+        }
+        
         resetToSurface() {
             this.tissueCompartments.forEach(compartment => {
                 compartment.nitrogenLoading = 0.79 * this.surfacePressure;
