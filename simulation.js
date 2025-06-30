@@ -262,6 +262,24 @@ class DiveSimulator {
                         borderDash: [3, 3],
                         tension: 0.2,
                         yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (BVM-3)',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderDash: [8, 2],
+                        tension: 0.2,
+                        yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (VVAL-18)',
+                        data: [],
+                        borderColor: '#06d6a0',
+                        backgroundColor: 'rgba(6, 214, 160, 0.1)',
+                        borderDash: [2, 6],
+                        tension: 0.2,
+                        yAxisID: 'depth'
                     }
                 ]
             },
@@ -631,6 +649,12 @@ class DiveSimulator {
         );
         this.profileChart.data.datasets[2].data = this.diveHistory.map(h => 
             h.models.vpmb ? h.models.vpmb.ceiling : 0
+        );
+        this.profileChart.data.datasets[3].data = this.diveHistory.map(h => 
+            h.models.bvm ? h.models.bvm.ceiling : 0
+        );
+        this.profileChart.data.datasets[4].data = this.diveHistory.map(h => 
+            h.models.vval18 ? h.models.vval18.ceiling : 0
         );
         this.profileChart.update('none');
         
