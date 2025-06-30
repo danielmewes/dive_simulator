@@ -764,10 +764,9 @@
         }
         
         updateTissueLoadings(timeStep) {
-            const ambientPressure = this.currentDiveState.ambientPressure;
-            const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen, ambientPressure);
-            const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium, ambientPressure);
-            const oxygenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.oxygen, ambientPressure);
+            const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
+            const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
+            const oxygenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.oxygen);
             
             for (let i = 0; i < this.tissueCompartments.length; i++) {
                 const comp = this.tissueCompartments[i];
@@ -775,26 +774,27 @@
                 // Update nitrogen using linear-exponential model
                 comp.nitrogenLoading = this.calculateLinearExponentialLoading(
                     comp.nitrogenLoading, nitrogenPP, comp.nitrogenHalfTime, 
-                    comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                    comp.linearSlope, comp.crossoverPressure, timeStep
                 );
                 
                 // Update helium using linear-exponential model
                 comp.heliumLoading = this.calculateLinearExponentialLoading(
                     comp.heliumLoading, heliumPP, comp.heliumHalfTime,
-                    comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                    comp.linearSlope, comp.crossoverPressure, timeStep
                 );
                 
                 // Update oxygen if enabled
                 if (this.enableOxygenTracking) {
                     comp.oxygenLoading = this.calculateLinearExponentialLoading(
                         comp.oxygenLoading, oxygenPP, comp.nitrogenHalfTime * 0.75,
-                        comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                        comp.linearSlope, comp.crossoverPressure, timeStep
                     );
                 }
             }
         }
         
-        calculateLinearExponentialLoading(initialLoading, partialPressure, halfTime, linearSlope, crossoverPressure, timeStep, ambientPressure) {
+        calculateLinearExponentialLoading(initialLoading, partialPressure, halfTime, linearSlope, crossoverPressure, timeStep) {
+            const ambientPressure = this.currentDiveState.ambientPressure;
             const supersaturation = initialLoading - ambientPressure;
             
             // Gas uptake: always exponential (Haldane)
