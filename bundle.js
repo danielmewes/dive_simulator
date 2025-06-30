@@ -717,12 +717,225 @@
         }
     }
     
+    // === NMRI98 Linear Exponential Model ===
+    class Nmri98Model extends DecompressionModel {
+        constructor(options = {}) {
+            super();
+            this.conservatism = Math.max(0, Math.min(5, options.conservatism || 3));
+            this.maxDcsRisk = Math.max(0.1, Math.min(10.0, options.maxDcsRisk || 2.0));
+            this.safetyFactor = Math.max(1.0, Math.min(2.0, options.safetyFactor || 1.2));
+            this.enableOxygenTracking = options.enableOxygenTracking !== false;
+            this.initializeTissueCompartments();
+        }
+        
+        initializeTissueCompartments() {
+            // NMRI98 uses 3 compartments with linear-exponential kinetics
+            const NITROGEN_HALF_TIMES = [8.0, 40.0, 120.0];
+            const HELIUM_HALF_TIMES = [3.0, 15.1, 45.3];
+            const OXYGEN_HALF_TIMES = [6.0, 30.0, 90.0];
+            const M_VALUES = [2.5, 1.8, 1.4];
+            const LINEAR_SLOPES = [0.8, 0.5, 0.3];
+            const CROSSOVER_PRESSURES = [0.5, 0.3, 0.2];
+            const OXYGEN_THRESHOLDS = [1.4, 1.0, 0.8];
+            
+            this.tissueCompartments = [];
+            this.nmri98Compartments = [];
+            
+            for (let i = 0; i < 3; i++) {
+                const compartment = {
+                    number: i + 1,
+                    nitrogenHalfTime: NITROGEN_HALF_TIMES[i],
+                    heliumHalfTime: HELIUM_HALF_TIMES[i],
+                    nitrogenLoading: 0.79 * this.surfacePressure,
+                    heliumLoading: 0.0,
+                    oxygenLoading: 0.21 * this.surfacePressure,
+                    mValue: M_VALUES[i],
+                    linearSlope: LINEAR_SLOPES[i],
+                    crossoverPressure: CROSSOVER_PRESSURES[i],
+                    oxygenThreshold: OXYGEN_THRESHOLDS[i],
+                    get totalLoading() {
+                        return this.nitrogenLoading + this.heliumLoading;
+                    }
+                };
+                
+                this.tissueCompartments.push(compartment);
+                this.nmri98Compartments.push(compartment);
+            }
+        }
+        
+        updateTissueLoadings(timeStep) {
+            const ambientPressure = this.currentDiveState.ambientPressure;
+            const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen, ambientPressure);
+            const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium, ambientPressure);
+            const oxygenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.oxygen, ambientPressure);
+            
+            for (let i = 0; i < this.tissueCompartments.length; i++) {
+                const comp = this.tissueCompartments[i];
+                
+                // Update nitrogen using linear-exponential model
+                comp.nitrogenLoading = this.calculateLinearExponentialLoading(
+                    comp.nitrogenLoading, nitrogenPP, comp.nitrogenHalfTime, 
+                    comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                );
+                
+                // Update helium using linear-exponential model
+                comp.heliumLoading = this.calculateLinearExponentialLoading(
+                    comp.heliumLoading, heliumPP, comp.heliumHalfTime,
+                    comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                );
+                
+                // Update oxygen if enabled
+                if (this.enableOxygenTracking) {
+                    comp.oxygenLoading = this.calculateLinearExponentialLoading(
+                        comp.oxygenLoading, oxygenPP, comp.nitrogenHalfTime * 0.75,
+                        comp.linearSlope, comp.crossoverPressure, timeStep, ambientPressure
+                    );
+                }
+            }
+        }
+        
+        calculateLinearExponentialLoading(initialLoading, partialPressure, halfTime, linearSlope, crossoverPressure, timeStep, ambientPressure) {
+            const supersaturation = initialLoading - ambientPressure;
+            
+            // Gas uptake: always exponential (Haldane)
+            if (partialPressure >= initialLoading) {
+                const k = Math.log(2) / halfTime;
+                return partialPressure + (initialLoading - partialPressure) * Math.exp(-k * timeStep);
+            }
+            
+            // Gas elimination: linear-exponential model
+            if (supersaturation > crossoverPressure) {
+                // Linear elimination phase
+                const linearRate = linearSlope * (supersaturation - crossoverPressure) / halfTime;
+                const newLoading = initialLoading - (linearRate * timeStep);
+                const crossoverLoading = ambientPressure + crossoverPressure;
+                return Math.max(newLoading, crossoverLoading);
+            } else {
+                // Exponential elimination phase
+                const k = Math.log(2) / halfTime;
+                return partialPressure + (initialLoading - partialPressure) * Math.exp(-k * timeStep);
+            }
+        }
+        
+        calculateCeiling() {
+            let maxCeiling = 0;
+            
+            for (const comp of this.tissueCompartments) {
+                let totalLoading = comp.nitrogenLoading + comp.heliumLoading;
+                
+                // Add oxygen contribution if above threshold
+                if (this.enableOxygenTracking && comp.oxygenLoading > comp.oxygenThreshold) {
+                    totalLoading += (comp.oxygenLoading - comp.oxygenThreshold) * 0.5;
+                }
+                
+                const conservatismFactor = 1.0 - (this.conservatism * 0.1);
+                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const ceilingPressure = totalLoading - allowableLoading;
+                const ceilingDepth = (ceilingPressure - this.surfacePressure) * 10;
+                
+                maxCeiling = Math.max(maxCeiling, ceilingDepth);
+            }
+            
+            return Math.max(0, maxCeiling);
+        }
+        
+        calculateDecompressionStops() {
+            const stops = [];
+            const ceiling = this.calculateCeiling();
+            
+            if (ceiling > 0) {
+                for (let depth = Math.ceil(ceiling / 3) * 3; depth > 0; depth -= 3) {
+                    const stopTime = this.calculateStopTime(depth);
+                    if (stopTime > 0) {
+                        stops.push({
+                            depth: depth,
+                            time: stopTime,
+                            gasMix: this.currentDiveState.gasMix
+                        });
+                    }
+                }
+            }
+            
+            return stops;
+        }
+        
+        calculateStopTime(depth) {
+            const ambientPressure = this.calculateAmbientPressure(depth);
+            let maxStopTime = 0;
+            
+            for (const comp of this.tissueCompartments) {
+                let totalLoading = comp.nitrogenLoading + comp.heliumLoading;
+                if (this.enableOxygenTracking && comp.oxygenLoading > comp.oxygenThreshold) {
+                    totalLoading += (comp.oxygenLoading - comp.oxygenThreshold) * 0.5;
+                }
+                
+                const conservatismFactor = 1.0 - (this.conservatism * 0.1);
+                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const maxAllowableAtDepth = allowableLoading + ambientPressure;
+                
+                if (totalLoading > maxAllowableAtDepth) {
+                    const excessLoading = totalLoading - maxAllowableAtDepth;
+                    const supersaturation = totalLoading - ambientPressure;
+                    
+                    if (supersaturation > comp.crossoverPressure) {
+                        const linearRate = comp.linearSlope * (supersaturation - comp.crossoverPressure) / comp.nitrogenHalfTime;
+                        maxStopTime = Math.max(maxStopTime, excessLoading / linearRate);
+                    } else {
+                        const exponentialTime = comp.nitrogenHalfTime * Math.log(2) * (excessLoading / (totalLoading - ambientPressure + 0.1));
+                        maxStopTime = Math.max(maxStopTime, exponentialTime);
+                    }
+                }
+            }
+            
+            return Math.max(1, Math.min(30, Math.ceil(maxStopTime)));
+        }
+        
+        canAscendDirectly() {
+            return this.calculateCeiling() <= 0;
+        }
+        
+        calculateDCSRisk() {
+            let maxRiskFactor = 0;
+            let oxygenRiskFactor = 0;
+            
+            for (const comp of this.tissueCompartments) {
+                let totalLoading = comp.nitrogenLoading + comp.heliumLoading;
+                
+                const conservatismFactor = 1.0 - (this.conservatism * 0.1);
+                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const maxAllowableLoading = this.currentDiveState.ambientPressure + allowableLoading;
+                
+                if (totalLoading > maxAllowableLoading) {
+                    const exceedance = totalLoading - maxAllowableLoading;
+                    const riskFactor = exceedance / allowableLoading;
+                    maxRiskFactor = Math.max(maxRiskFactor, riskFactor);
+                }
+                
+                if (this.enableOxygenTracking && comp.oxygenLoading > comp.oxygenThreshold) {
+                    const oxygenExcess = comp.oxygenLoading - comp.oxygenThreshold;
+                    const oxygenRisk = oxygenExcess / comp.oxygenThreshold;
+                    oxygenRiskFactor = Math.max(oxygenRiskFactor, oxygenRisk);
+                }
+            }
+            
+            const combinedRiskFactor = maxRiskFactor + (oxygenRiskFactor * 0.3);
+            const riskPercentage = Math.min(100, combinedRiskFactor * this.maxDcsRisk * 100);
+            
+            return Math.round(riskPercentage * 10) / 10;
+        }
+        
+        getModelName() {
+            return `NMRI98 LEM (Conservatism: ${this.conservatism}, Risk: ${this.maxDcsRisk}%)`;
+        }
+    }
+    
     // Export classes to global namespace
     window.DecompressionSimulator.DecompressionModel = DecompressionModel;
     window.DecompressionSimulator.BuhlmannModel = BuhlmannModel;
     window.DecompressionSimulator.VpmBModel = VpmBModel;
     window.DecompressionSimulator.BvmModel = BvmModel;
     window.DecompressionSimulator.VVal18ThalmannModel = VVal18ThalmannModel;
+    window.DecompressionSimulator.Nmri98Model = Nmri98Model;
     
     // Helper functions for the UI
     window.DecompressionSimulator.createModel = function(type, options) {
@@ -746,6 +959,13 @@
                     dcsRiskPercent: options.dcsRiskPercent || 2.3,
                     gradientFactorLow: options.gradientFactorLow || 30,
                     gradientFactorHigh: options.gradientFactorHigh || 85
+                });
+            case 'nmri98':
+                return new Nmri98Model({
+                    conservatism: options.conservatism || 3,
+                    maxDcsRisk: options.maxDcsRisk || 2.0,
+                    safetyFactor: options.safetyFactor || 1.2,
+                    enableOxygenTracking: options.enableOxygenTracking !== false
                 });
             default:
                 throw new Error('Unknown model type: ' + type);

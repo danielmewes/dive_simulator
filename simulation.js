@@ -11,7 +11,8 @@ class DiveSimulator {
             buhlmann: true,
             vpmb: true,
             bvm: true,
-            vval18: true
+            vval18: true,
+            nmri98: true
         };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
@@ -39,6 +40,12 @@ class DiveSimulator {
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
+        
+        // NMRI98 settings
+        this.nmri98Conservatism = 3; // Default NMRI98 conservatism level
+        this.nmri98MaxDcsRisk = 2.0; // Default maximum DCS risk percentage
+        this.nmri98SafetyFactor = 1.2; // Default safety factor
+        this.nmri98EnableOxygenTracking = true; // Default oxygen tracking enabled
         
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
@@ -74,6 +81,12 @@ class DiveSimulator {
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
+                }),
+                nmri98: window.DecompressionSimulator.createModel('nmri98', {
+                    conservatism: this.nmri98Conservatism,
+                    maxDcsRisk: this.nmri98MaxDcsRisk,
+                    safetyFactor: this.nmri98SafetyFactor,
+                    enableOxygenTracking: this.nmri98EnableOxygenTracking
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -235,6 +248,11 @@ class DiveSimulator {
             this.enabledModels.vval18 = e.target.checked;
             this.updateModelVisibility();
         });
+        
+        document.getElementById('model-nmri98').addEventListener('change', (e) => {
+            this.enabledModels.nmri98 = e.target.checked;
+            this.updateModelVisibility();
+        });
     }
     
     setZoomMode(mode) {
@@ -322,7 +340,8 @@ class DiveSimulator {
             buhlmann: 'Bühlmann ZH-L16C',
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
+            vval18: 'VVal-18 Thalmann',
+            nmri98: 'NMRI98 LEM'
         };
         
         let foundValidOption = false;
@@ -1080,6 +1099,86 @@ class DiveSimulator {
         console.log(`BVM maximum DCS risk updated to ${newMaxDcsRisk}%`);
     }
     
+    updateNmri98Conservatism(newConservatism) {
+        this.nmri98Conservatism = newConservatism;
+        
+        // Update NMRI98 model with new conservatism level
+        this.updateModelWithNewParameters(
+            'nmri98', 
+            'nmri98', 
+            { 
+                conservatism: newConservatism, 
+                maxDcsRisk: this.nmri98MaxDcsRisk, 
+                safetyFactor: this.nmri98SafetyFactor,
+                enableOxygenTracking: this.nmri98EnableOxygenTracking
+            },
+            '#nmri98-result h4',
+            `NMRI98 LEM (C:${newConservatism})`
+        );
+        
+        console.log(`NMRI98 conservatism updated to ${newConservatism}`);
+    }
+    
+    updateNmri98MaxDcsRisk(newMaxDcsRisk) {
+        this.nmri98MaxDcsRisk = newMaxDcsRisk;
+        
+        // Update NMRI98 model with new maximum DCS risk
+        this.updateModelWithNewParameters(
+            'nmri98', 
+            'nmri98', 
+            { 
+                conservatism: this.nmri98Conservatism, 
+                maxDcsRisk: newMaxDcsRisk, 
+                safetyFactor: this.nmri98SafetyFactor,
+                enableOxygenTracking: this.nmri98EnableOxygenTracking
+            },
+            '#nmri98-result h4',
+            `NMRI98 LEM (R:${newMaxDcsRisk}%)`
+        );
+        
+        console.log(`NMRI98 maximum DCS risk updated to ${newMaxDcsRisk}%`);
+    }
+    
+    updateNmri98SafetyFactor(newSafetyFactor) {
+        this.nmri98SafetyFactor = newSafetyFactor;
+        
+        // Update NMRI98 model with new safety factor
+        this.updateModelWithNewParameters(
+            'nmri98', 
+            'nmri98', 
+            { 
+                conservatism: this.nmri98Conservatism, 
+                maxDcsRisk: this.nmri98MaxDcsRisk, 
+                safetyFactor: newSafetyFactor,
+                enableOxygenTracking: this.nmri98EnableOxygenTracking
+            },
+            '#nmri98-result h4',
+            `NMRI98 LEM (SF:${newSafetyFactor})`
+        );
+        
+        console.log(`NMRI98 safety factor updated to ${newSafetyFactor}`);
+    }
+    
+    updateNmri98OxygenTracking(enableOxygenTracking) {
+        this.nmri98EnableOxygenTracking = enableOxygenTracking;
+        
+        // Update NMRI98 model with new oxygen tracking setting
+        this.updateModelWithNewParameters(
+            'nmri98', 
+            'nmri98', 
+            { 
+                conservatism: this.nmri98Conservatism, 
+                maxDcsRisk: this.nmri98MaxDcsRisk, 
+                safetyFactor: this.nmri98SafetyFactor,
+                enableOxygenTracking: enableOxygenTracking
+            },
+            '#nmri98-result h4',
+            `NMRI98 LEM (O2:${enableOxygenTracking ? 'ON' : 'OFF'})`
+        );
+        
+        console.log(`NMRI98 oxygen tracking ${enableOxygenTracking ? 'enabled' : 'disabled'}`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -1089,6 +1188,7 @@ class DiveSimulator {
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
         const bvmPanel = document.getElementById('bvm-settings');
+        const nmri98Panel = document.getElementById('nmri98-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -1097,6 +1197,7 @@ class DiveSimulator {
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
             bvmPanel.style.display = 'none';
+            nmri98Panel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -1111,6 +1212,9 @@ class DiveSimulator {
                     break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
+                    break;
+                case 'nmri98':
+                    nmri98Panel.style.display = 'block';
                     break;
             }
         };
@@ -1186,6 +1290,37 @@ class DiveSimulator {
             bvmMaxDcsRiskDisplay.textContent = newMaxDcsRisk.toFixed(1);
             this.updateBvmMaxDcsRisk(newMaxDcsRisk);
         });
+        
+        // NMRI98 controls
+        const nmri98ConservatismSlider = document.getElementById('unified-nmri98-conservatism');
+        const nmri98ConservatismDisplay = document.getElementById('unified-nmri98-conservatism-display');
+        const nmri98MaxDcsRiskSlider = document.getElementById('unified-nmri98-max-dcs-risk');
+        const nmri98MaxDcsRiskDisplay = document.getElementById('unified-nmri98-max-dcs-risk-display');
+        const nmri98SafetyFactorSlider = document.getElementById('unified-nmri98-safety-factor');
+        const nmri98SafetyFactorDisplay = document.getElementById('unified-nmri98-safety-factor-display');
+        const nmri98OxygenTrackingCheckbox = document.getElementById('unified-nmri98-oxygen-tracking');
+        
+        nmri98ConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            nmri98ConservatismDisplay.textContent = newConservatism;
+            this.updateNmri98Conservatism(newConservatism);
+        });
+        
+        nmri98MaxDcsRiskSlider.addEventListener('input', (e) => {
+            const newMaxDcsRisk = parseFloat(e.target.value);
+            nmri98MaxDcsRiskDisplay.textContent = newMaxDcsRisk.toFixed(1);
+            this.updateNmri98MaxDcsRisk(newMaxDcsRisk);
+        });
+        
+        nmri98SafetyFactorSlider.addEventListener('input', (e) => {
+            const newSafetyFactor = parseFloat(e.target.value);
+            nmri98SafetyFactorDisplay.textContent = newSafetyFactor.toFixed(1);
+            this.updateNmri98SafetyFactor(newSafetyFactor);
+        });
+        
+        nmri98OxygenTrackingCheckbox.addEventListener('change', (e) => {
+            this.updateNmri98OxygenTracking(e.target.checked);
+        });
     }
     
     startSimulation() {
@@ -1222,6 +1357,10 @@ class DiveSimulator {
         this.vpmConservatism = 2;
         this.bvmConservatism = 3;
         this.bvmMaxDcsRisk = 5.0;
+        this.nmri98Conservatism = 3;
+        this.nmri98MaxDcsRisk = 2.0;
+        this.nmri98SafetyFactor = 1.2;
+        this.nmri98EnableOxygenTracking = true;
         
         // Reset unified model settings controls
         document.getElementById('unified-vpm-conservatism').value = 2;
@@ -1238,6 +1377,13 @@ class DiveSimulator {
         document.getElementById('unified-bvm-conservatism-display').textContent = '3';
         document.getElementById('unified-bvm-max-dcs-risk').value = 5.0;
         document.getElementById('unified-bvm-max-dcs-risk-display').textContent = '5.0';
+        document.getElementById('unified-nmri98-conservatism').value = 3;
+        document.getElementById('unified-nmri98-conservatism-display').textContent = '3';
+        document.getElementById('unified-nmri98-max-dcs-risk').value = 2.0;
+        document.getElementById('unified-nmri98-max-dcs-risk-display').textContent = '2.0';
+        document.getElementById('unified-nmri98-safety-factor').value = 1.2;
+        document.getElementById('unified-nmri98-safety-factor-display').textContent = '1.2';
+        document.getElementById('unified-nmri98-oxygen-tracking').checked = true;
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
         
@@ -1247,6 +1393,7 @@ class DiveSimulator {
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
         document.getElementById('bvm-result').querySelector('h4').textContent = 'BVM(3)';
+        document.getElementById('nmri98-result').querySelector('h4').textContent = 'NMRI98 LEM';
         
         // Reset zoom to full view
         this.zoomMode = 'full';
@@ -1669,7 +1816,8 @@ class DiveSimulator {
                 buhlmann: 16,
                 vpmb: 16,
                 bvm: 3,
-                vval18: 3
+                vval18: 3,
+                nmri98: 3
             };
             compartmentCount = modelDefaults[selectedModel] || 16;
         }
@@ -1715,7 +1863,8 @@ class DiveSimulator {
             buhlmann: 'Bühlmann ZH-L16C',
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
-            vval18: 'VVal-18 Thalmann'
+            vval18: 'VVal-18 Thalmann',
+            nmri98: 'NMRI98 LEM'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
