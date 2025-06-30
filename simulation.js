@@ -654,6 +654,14 @@ class DiveSimulator {
                         yAxisID: 'risk'
                     },
                     {
+                        label: 'NMRI98 Risk (%)',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
                         label: 'Dive Profile',
                         data: [],
                         borderColor: '#94a3b8',
@@ -1735,8 +1743,14 @@ class DiveSimulator {
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
-        // Dive profile overlay - Dataset 4 (always visible)
-        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
+        // NMRI98 risk over time - Dataset 4
+        this.riskChart.data.datasets[4].hidden = !this.enabledModels.nmri98;
+        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
+            h.models.nmri98 ? h.models.nmri98.risk : 0
+        );
+        
+        // Dive profile overlay - Dataset 5 (always visible)
+        this.riskChart.data.datasets[5].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('default');
         

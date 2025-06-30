@@ -733,7 +733,7 @@
             const NITROGEN_HALF_TIMES = [8.0, 40.0, 120.0];
             const HELIUM_HALF_TIMES = [3.0, 15.1, 45.3];
             const OXYGEN_HALF_TIMES = [6.0, 30.0, 90.0];
-            const M_VALUES = [2.5, 1.8, 1.4];
+            const M_VALUES = [1.6, 1.2, 1.0];
             const LINEAR_SLOPES = [0.8, 0.5, 0.3];
             const CROSSOVER_PRESSURES = [0.5, 0.3, 0.2];
             const OXYGEN_THRESHOLDS = [1.4, 1.0, 0.8];
