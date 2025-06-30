@@ -250,17 +250,45 @@ class DiveSimulator {
                         tension: 0.4
                     },
                     {
-                        label: 'VPM-B - Average',
+                        label: 'VPM-B - Fast Tissues',
                         data: [],
                         borderColor: '#34d399',
                         backgroundColor: 'rgba(52, 211, 153, 0.1)',
                         tension: 0.4
                     },
                     {
-                        label: 'BVM(3) - Fast',
+                        label: 'VPM-B - Slow Tissues',
+                        data: [],
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'BVM(3) - Fast Tissues',
                         data: [],
                         borderColor: '#f59e0b',
                         backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'BVM(3) - Slow Tissues',
+                        data: [],
+                        borderColor: '#d97706',
+                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'VVal-18 - Fast Tissues',
+                        data: [],
+                        borderColor: '#ec4899',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'VVal-18 - Slow Tissues',
+                        data: [],
+                        borderColor: '#be185d',
+                        backgroundColor: 'rgba(190, 24, 93, 0.1)',
                         tension: 0.4
                     }
                 ]
@@ -916,21 +944,54 @@ class DiveSimulator {
             return slowAvg;
         });
         
-        // VPM-B average (all compartments)
+        // VPM-B fast tissues (average of first 4 compartments)
         this.tissueChart.data.datasets[2].data = this.diveHistory.map(h => {
             if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
             const loadings = h.models.vpmb.tissueLoadings;
-            const avg = loadings
-                .reduce((sum, load) => sum + (load || 1.013), 0) / loadings.length;
-            return avg;
+            const fastAvg = loadings.slice(0, 4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return fastAvg;
         });
         
-        // BVM fast compartment
+        // VPM-B slow tissues (average of last 4 compartments)
         this.tissueChart.data.datasets[3].data = this.diveHistory.map(h => {
+            if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
+            const loadings = h.models.vpmb.tissueLoadings;
+            const slowAvg = loadings.slice(-4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
+            return slowAvg;
+        });
+        
+        // BVM fast tissues (compartment 1 - Fast: 12.5 min)
+        this.tissueChart.data.datasets[4].data = this.diveHistory.map(h => {
             if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[0]) {
                 return 1.013;
             }
             return h.models.bvm.tissueLoadings[0];
+        });
+        
+        // BVM slow tissues (compartment 3 - Slow: 423 min)
+        this.tissueChart.data.datasets[5].data = this.diveHistory.map(h => {
+            if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[2]) {
+                return 1.013;
+            }
+            return h.models.bvm.tissueLoadings[2];
+        });
+        
+        // VVal-18 fast tissues (compartment 1 - Fast: 5 min)
+        this.tissueChart.data.datasets[6].data = this.diveHistory.map(h => {
+            if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[0]) {
+                return 1.013;
+            }
+            return h.models.vval18.tissueLoadings[0];
+        });
+        
+        // VVal-18 slow tissues (compartment 3 - Slow: 240 min)
+        this.tissueChart.data.datasets[7].data = this.diveHistory.map(h => {
+            if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[2]) {
+                return 1.013;
+            }
+            return h.models.vval18.tissueLoadings[2];
         });
         
         this.tissueChart.update('none');
