@@ -526,6 +526,41 @@ button:hover {
     visibility: visible;
 }
 
+/* Zoom Controls */
+.zoom-controls {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.zoom-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.zoom-btn {
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.zoom-btn.active {
+    background: #34d399;
+    color: #0a1929;
+    font-weight: bold;
+}
+
 /* Detailed Tissue Model Selector */
 .detailed-model-selector {
     display: none;
