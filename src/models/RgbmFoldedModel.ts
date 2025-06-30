@@ -11,7 +11,7 @@
  * - 16 tissue compartments based on Bühlmann ZH-L16C
  * - Microbubble formation tracking using f-factors
  * - Repetitive dive and reverse dive penalties
- * - Conservative gradient factor application
+ * - Bubble dynamics and conservative f-factor modifications
  * 
  * Based on the work of:
  * - Wienke, B.R. (1991) - RGBM theory and application
@@ -47,11 +47,7 @@ interface RgbmCompartment extends TissueCompartment {
 }
 
 interface RgbmSettings {
-  /** Gradient factor low (deeper stops) - typically 20-40 */
-  gradientFactorLow: number;
-  /** Gradient factor high (surface) - typically 75-95 */
-  gradientFactorHigh: number;
-  /** Conservatism level (0-5) - affects f-factors */
+  /** Conservatism level (0-5) - affects f-factors and bubble model parameters */
   conservatism: number;
   /** Enable repetitive dive penalty */
   enableRepetitivePenalty: boolean;
@@ -112,8 +108,6 @@ export class RgbmFoldedModel extends DecompressionModel {
     super();
 
     this.settings = {
-      gradientFactorLow: settings.gradientFactorLow ?? 25,
-      gradientFactorHigh: settings.gradientFactorHigh ?? 85,
       conservatism: settings.conservatism ?? 2,
       enableRepetitivePenalty: settings.enableRepetitivePenalty ?? true,
       ...settings
@@ -135,15 +129,6 @@ export class RgbmFoldedModel extends DecompressionModel {
   }
 
   private validateSettings(): void {
-    if (this.settings.gradientFactorLow < 0 || this.settings.gradientFactorLow > 100) {
-      throw new Error('RGBM gradient factor low must be between 0 and 100');
-    }
-    if (this.settings.gradientFactorHigh < 0 || this.settings.gradientFactorHigh > 100) {
-      throw new Error('RGBM gradient factor high must be between 0 and 100');
-    }
-    if (this.settings.gradientFactorLow > this.settings.gradientFactorHigh) {
-      throw new Error('RGBM gradient factor low cannot be greater than gradient factor high');
-    }
     if (this.settings.conservatism < 0 || this.settings.conservatism > 5) {
       throw new Error('RGBM conservatism must be between 0 and 5');
     }
@@ -262,7 +247,7 @@ export class RgbmFoldedModel extends DecompressionModel {
       return stops;
     }
 
-    // Calculate first stop depth for gradient factor calculations
+    // Calculate first stop depth for RGBM decompression planning
     this.firstStopDepth = this.calculateFirstStopDepth();
 
     // Generate stops at 3m intervals starting from ceiling
@@ -290,7 +275,7 @@ export class RgbmFoldedModel extends DecompressionModel {
   }
 
   public getModelName(): string {
-    return `RGBM (folded) - GF ${this.settings.gradientFactorLow}/${this.settings.gradientFactorHigh}, C${this.settings.conservatism}`;
+    return `RGBM (folded) - C${this.settings.conservatism}`;
   }
 
   /**
@@ -349,17 +334,13 @@ export class RgbmFoldedModel extends DecompressionModel {
       const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
       const ambientPressure = this.currentDiveState.ambientPressure;
       
-      // Calculate modified M-value with f-factor
+      // Calculate modified M-value with f-factor (this is the core RGBM approach)
       const baseMValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
       const modifiedMValue = baseMValue * compartment.fFactor;
       
-      // Apply gradient factors
-      const effectiveGradientFactor = this.getGradientFactorAtDepth(this.currentDiveState.depth);
-      const allowableSupersaturation = modifiedMValue * (effectiveGradientFactor / 100);
-      
-      // Calculate supersaturation and risk
+      // Calculate supersaturation and risk using pure RGBM approach
       const supersaturation = Math.max(0, totalLoading - ambientPressure);
-      const supersaturationRatio = supersaturation / allowableSupersaturation;
+      const supersaturationRatio = supersaturation / modifiedMValue;
       
       // Include bubble volume contribution to risk
       const bubbleContribution = compartment.bubbleSeedCount / this.BASE_BUBBLE_SEED_COUNT;
@@ -457,29 +438,19 @@ export class RgbmFoldedModel extends DecompressionModel {
   private calculateCompartmentCeiling(compartment: RgbmCompartment): number {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     
-    // Calculate modified M-value with f-factor
+    // Calculate modified M-value with f-factor (pure RGBM approach)
     const a = compartment.combinedMValueA;
     const b = compartment.combinedMValueB;
     const modifiedA = a * compartment.fFactor;
     const modifiedB = b * compartment.fFactor;
     
-    // Apply gradient factor
+    // Direct RGBM ceiling calculation without gradient factors
     const allowedPressure = (totalLoading - modifiedB) / modifiedA;
     const ceilingDepth = (allowedPressure - this.surfacePressure) / 0.1;
 
     return Math.max(0, ceilingDepth);
   }
 
-  private getGradientFactorAtDepth(depth: number): number {
-    if (this.firstStopDepth <= 0) {
-      return this.settings.gradientFactorHigh;
-    }
-
-    // Linear interpolation between GF-low at first stop and GF-high at surface
-    const depthRatio = depth / this.firstStopDepth;
-    return this.settings.gradientFactorHigh + 
-           (this.settings.gradientFactorLow - this.settings.gradientFactorHigh) * depthRatio;
-  }
 
   private calculateFirstStopDepth(): number {
     let maxStopDepth = 0;

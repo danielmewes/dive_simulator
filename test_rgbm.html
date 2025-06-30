@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RGBM Test</title>
+</head>
+<body>
+    <h1>RGBM Model Test</h1>
+    <div id="results"></div>
+    
+    <script src="bundle.js"></script>
+    <script>
+        try {
+            console.log('Testing RGBM model creation...');
+            
+            // Test RGBM model creation
+            const rgbmModel = window.DecompressionSimulator.createModel('rgbm', {
+                conservatism: 3
+            });
+            
+            console.log('✅ RGBM model created successfully');
+            console.log('Model name:', rgbmModel.getModelName());
+            
+            // Test RGBM settings
+            const settings = rgbmModel.getRgbmSettings();
+            console.log('RGBM settings:', settings);
+            
+            // Verify no gradient factors in settings
+            if (settings.gradientFactorLow || settings.gradientFactorHigh) {
+                throw new Error('❌ RGBM model incorrectly has gradient factors!');
+            }
+            
+            console.log('✅ RGBM model correctly has no gradient factors');
+            
+            // Test dive simulation
+            rgbmModel.updateDiveState(30, 600, { oxygen: 21, helium: 0 }); // 30m for 10 minutes
+            
+            const ceiling = rgbmModel.calculateCeiling();
+            console.log('Ceiling at 30m for 10min:', Math.round(ceiling), 'm');
+            
+            const risk = rgbmModel.calculateDCSRisk();
+            console.log('DCS Risk:', risk, '%');
+            
+            const bubble = rgbmModel.getTotalBubbleVolume();
+            console.log('Bubble volume:', bubble);
+            
+            document.getElementById('results').innerHTML = `
+                <h2>✅ RGBM Test Results</h2>
+                <p><strong>Model Name:</strong> ${rgbmModel.getModelName()}</p>
+                <p><strong>Conservatism:</strong> ${settings.conservatism}</p>
+                <p><strong>Repetitive Penalty:</strong> ${settings.enableRepetitivePenalty}</p>
+                <p><strong>Ceiling (30m/10min):</strong> ${Math.round(ceiling)}m</p>
+                <p><strong>DCS Risk:</strong> ${risk}%</p>
+                <p><strong>Total Bubble Volume:</strong> ${bubble}</p>
+                <p><strong>Gradient Factors Present:</strong> ${settings.gradientFactorLow ? 'YES ❌' : 'NO ✅'}</p>
+            `;
+            
+        } catch (error) {
+            console.error('❌ RGBM test failed:', error);
+            document.getElementById('results').innerHTML = `
+                <h2>❌ RGBM Test Failed</h2>
+                <p style="color: red;">${error.message}</p>
+            `;
+        }
+    </script>
+</body>
+</html>

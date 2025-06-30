@@ -739,8 +739,6 @@
             this.REPETITIVE_DIVE_THRESHOLD = 6;
             
             this.settings = {
-                gradientFactorLow: settings.gradientFactorLow ?? 25,
-                gradientFactorHigh: settings.gradientFactorHigh ?? 85,
                 conservatism: settings.conservatism ?? 2,
                 enableRepetitivePenalty: settings.enableRepetitivePenalty ?? true,
                 ...settings
@@ -761,15 +759,6 @@
         }
         
         validateSettings() {
-            if (this.settings.gradientFactorLow < 0 || this.settings.gradientFactorLow > 100) {
-                throw new Error('RGBM gradient factor low must be between 0 and 100');
-            }
-            if (this.settings.gradientFactorHigh < 0 || this.settings.gradientFactorHigh > 100) {
-                throw new Error('RGBM gradient factor high must be between 0 and 100');
-            }
-            if (this.settings.gradientFactorLow > this.settings.gradientFactorHigh) {
-                throw new Error('RGBM gradient factor low cannot be greater than gradient factor high');
-            }
             if (this.settings.conservatism < 0 || this.settings.conservatism > 5) {
                 throw new Error('RGBM conservatism must be between 0 and 5');
             }
@@ -900,7 +889,7 @@
         }
         
         getModelName() {
-            return `RGBM (folded) - GF ${this.settings.gradientFactorLow}/${this.settings.gradientFactorHigh}, C${this.settings.conservatism}`;
+            return `RGBM (folded) - C${this.settings.conservatism}`;
         }
         
         calculateDCSRisk() {
@@ -913,14 +902,13 @@
                 const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
                 const ambientPressure = this.currentDiveState.ambientPressure;
                 
+                // Calculate modified M-value with f-factor (this is the core RGBM approach)
                 const baseMValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
                 const modifiedMValue = baseMValue * compartment.fFactor;
                 
-                const effectiveGradientFactor = this.getGradientFactorAtDepth(this.currentDiveState.depth);
-                const allowableSupersaturation = modifiedMValue * (effectiveGradientFactor / 100);
-                
+                // Calculate supersaturation and risk using pure RGBM approach
                 const supersaturation = Math.max(0, totalLoading - ambientPressure);
-                const supersaturationRatio = supersaturation / allowableSupersaturation;
+                const supersaturationRatio = supersaturation / modifiedMValue;
                 
                 const bubbleContribution = compartment.bubbleSeedCount / this.BASE_BUBBLE_SEED_COUNT;
                 const totalRisk = supersaturationRatio * (1 + bubbleContribution * 0.1);
@@ -1006,15 +994,6 @@
             return Math.max(0, ceilingDepth);
         }
         
-        getGradientFactorAtDepth(depth) {
-            if (this.firstStopDepth <= 0) {
-                return this.settings.gradientFactorHigh;
-            }
-            
-            const depthRatio = depth / this.firstStopDepth;
-            return this.settings.gradientFactorHigh + 
-                   (this.settings.gradientFactorLow - this.settings.gradientFactorHigh) * depthRatio;
-        }
         
         calculateFirstStopDepth() {
             let maxStopDepth = 0;
@@ -1167,8 +1146,6 @@
                 });
             case 'rgbm':
                 return new RgbmFoldedModel({
-                    gradientFactorLow: options.gradientFactorLow || 25,
-                    gradientFactorHigh: options.gradientFactorHigh || 85,
                     conservatism: options.conservatism || 2,
                     enableRepetitivePenalty: options.enableRepetitivePenalty !== false
                 });

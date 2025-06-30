@@ -29,7 +29,6 @@ class DiveSimulator {
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
-        this.rgbmGradientFactors = { low: 25, high: 85 };
         this.rgbmConservatism = 2;
         
         // Zoom state
@@ -64,8 +63,6 @@ class DiveSimulator {
                     gradientFactorHigh: this.vval18GradientFactors.high 
                 }),
                 rgbm: window.DecompressionSimulator.createModel('rgbm', {
-                    gradientFactorLow: this.rgbmGradientFactors.low,
-                    gradientFactorHigh: this.rgbmGradientFactors.high,
                     conservatism: this.rgbmConservatism
                 })
             };
@@ -942,27 +939,6 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
-    updateRgbmGradientFactors(newGfLow, newGfHigh) {
-        this.rgbmGradientFactors = { low: newGfLow, high: newGfHigh };
-        
-        this.updateModelWithNewParameters(
-            'rgbm', 
-            'rgbm', 
-            { 
-                gradientFactorLow: newGfLow, 
-                gradientFactorHigh: newGfHigh,
-                conservatism: this.rgbmConservatism
-            },
-            '#rgbm-title',
-            `RGBM (folded) - GF ${newGfLow}/${newGfHigh}, C${this.rgbmConservatism}`
-        );
-        
-        // Also update the schedule title
-        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - GF ${newGfLow}/${newGfHigh}, C${this.rgbmConservatism}`;
-        
-        console.log(`RGBM gradient factors updated to ${newGfLow}/${newGfHigh}`);
-    }
-    
     updateRgbmConservatism(newConservatism) {
         this.rgbmConservatism = newConservatism;
         
@@ -970,16 +946,14 @@ class DiveSimulator {
             'rgbm', 
             'rgbm', 
             { 
-                gradientFactorLow: this.rgbmGradientFactors.low, 
-                gradientFactorHigh: this.rgbmGradientFactors.high,
                 conservatism: newConservatism
             },
             '#rgbm-title',
-            `RGBM (folded) - GF ${this.rgbmGradientFactors.low}/${this.rgbmGradientFactors.high}, C${newConservatism}`
+            `RGBM (folded) - C${newConservatism}`
         );
         
         // Also update the schedule title
-        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - GF ${this.rgbmGradientFactors.low}/${this.rgbmGradientFactors.high}, C${newConservatism}`;
+        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - C${newConservatism}`;
         
         console.log(`RGBM conservatism updated to ${newConservatism}`);
     }
@@ -1073,25 +1047,9 @@ class DiveSimulator {
             this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
         });
         
-        // RGBM gradient factor and conservatism controls
-        const rgbmGfLowSlider = document.getElementById('unified-rgbm-gf-low');
-        const rgbmGfLowDisplay = document.getElementById('unified-rgbm-gf-low-display');
-        const rgbmGfHighSlider = document.getElementById('unified-rgbm-gf-high');
-        const rgbmGfHighDisplay = document.getElementById('unified-rgbm-gf-high-display');
+        // RGBM conservatism control
         const rgbmConservatismSlider = document.getElementById('unified-rgbm-conservatism');
         const rgbmConservatismDisplay = document.getElementById('unified-rgbm-conservatism-display');
-        
-        rgbmGfLowSlider.addEventListener('input', (e) => {
-            const newGfLow = parseInt(e.target.value);
-            rgbmGfLowDisplay.textContent = newGfLow;
-            this.updateRgbmGradientFactors(newGfLow, this.rgbmGradientFactors.high);
-        });
-        
-        rgbmGfHighSlider.addEventListener('input', (e) => {
-            const newGfHigh = parseInt(e.target.value);
-            rgbmGfHighDisplay.textContent = newGfHigh;
-            this.updateRgbmGradientFactors(this.rgbmGradientFactors.low, newGfHigh);
-        });
         
         rgbmConservatismSlider.addEventListener('input', (e) => {
             const newConservatism = parseInt(e.target.value);
@@ -1146,14 +1104,9 @@ class DiveSimulator {
         document.getElementById('unified-vval18-gf-high-display').textContent = '85';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
-        this.rgbmGradientFactors = { low: 25, high: 85 };
         this.rgbmConservatism = 2;
         
         // Reset RGBM controls
-        document.getElementById('unified-rgbm-gf-low').value = 25;
-        document.getElementById('unified-rgbm-gf-low-display').textContent = '25';
-        document.getElementById('unified-rgbm-gf-high').value = 85;
-        document.getElementById('unified-rgbm-gf-high-display').textContent = '85';
         document.getElementById('unified-rgbm-conservatism').value = 2;
         document.getElementById('unified-rgbm-conservatism-display').textContent = '2';
         
@@ -1319,7 +1272,7 @@ class DiveSimulator {
             const totalTime = stops.reduce((sum, stop) => sum + stop.time, 0);
             
             // Update ceiling and TTS
-            document.getElementById(`${name}-ceiling`).textContent = `${ceiling}m`;
+            document.getElementById(`${name}-ceiling`).textContent = `${Math.round(ceiling)}m`;
             document.getElementById(`${name}-tts`).textContent = totalTime > 0 ? `${Math.round(totalTime)} min` : '0 min';
             
             // Update status
