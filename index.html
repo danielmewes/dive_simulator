@@ -81,62 +81,72 @@
                         </div>
                     </div>
 
-                    <!-- VPM-B Conservatism Control -->
+                    <!-- Unified Model Settings Control -->
                     <div class="control-group">
-                        <h4>⚙️ VPM-B Settings</h4>
-                        <div class="vpm-controls">
-                            <div class="conservatism-control">
-                                <label for="vpm-conservatism">Conservatism Level: <span id="vpm-conservatism-display">2</span></label>
-                                <input type="range" id="vpm-conservatism" min="0" max="5" value="2" step="1">
-                                <div class="conservatism-labels">
-                                    <span>0 (Aggressive)</span>
-                                    <span>5 (Conservative)</span>
+                        <h4>⚙️ Model Settings</h4>
+                        <div class="model-settings-unified">
+                            <div class="model-selector">
+                                <label for="model-settings-selector">Configure Model:</label>
+                                <select id="model-settings-selector">
+                                    <option value="vpmb">VPM-B</option>
+                                    <option value="buhlmann">Bühlmann</option>
+                                    <option value="vval18">VVal-18</option>
+                                </select>
+                            </div>
+                            
+                            <!-- VPM-B Settings -->
+                            <div id="vpmb-settings" class="model-settings-panel">
+                                <div class="conservatism-control">
+                                    <label for="unified-vpm-conservatism">Conservatism Level: <span id="unified-vpm-conservatism-display">2</span></label>
+                                    <input type="range" id="unified-vpm-conservatism" min="0" max="5" value="2" step="1">
+                                    <div class="conservatism-labels">
+                                        <span>0 (Aggressive)</span>
+                                        <span>5 (Conservative)</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Bühlmann Gradient Factor Control -->
-                    <div class="control-group">
-                        <h4>⚙️ Bühlmann Gradient Factors</h4>
-                        <div class="gradient-factor-controls">
-                            <div class="gradient-factor-control">
-                                <label for="buhlmann-gf-low">GF Low: <span id="buhlmann-gf-low-display">30</span>%</label>
-                                <input type="range" id="buhlmann-gf-low" min="10" max="50" value="30" step="5">
-                                <div class="gradient-factor-labels">
-                                    <span>10% (Aggressive)</span>
-                                    <span>50% (Conservative)</span>
+                            
+                            <!-- Bühlmann Settings -->
+                            <div id="buhlmann-settings" class="model-settings-panel" style="display: none;">
+                                <div class="gradient-factor-controls">
+                                    <div class="gradient-factor-control">
+                                        <label for="unified-buhlmann-gf-low">GF Low: <span id="unified-buhlmann-gf-low-display">30</span>%</label>
+                                        <input type="range" id="unified-buhlmann-gf-low" min="10" max="50" value="30" step="5">
+                                        <div class="gradient-factor-labels">
+                                            <span>10% (Aggressive)</span>
+                                            <span>50% (Conservative)</span>
+                                        </div>
+                                    </div>
+                                    <div class="gradient-factor-control">
+                                        <label for="unified-buhlmann-gf-high">GF High: <span id="unified-buhlmann-gf-high-display">85</span>%</label>
+                                        <input type="range" id="unified-buhlmann-gf-high" min="60" max="100" value="85" step="5">
+                                        <div class="gradient-factor-labels">
+                                            <span>60% (Aggressive)</span>
+                                            <span>100% (Conservative)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="gradient-factor-control">
-                                <label for="buhlmann-gf-high">GF High: <span id="buhlmann-gf-high-display">85</span>%</label>
-                                <input type="range" id="buhlmann-gf-high" min="60" max="100" value="85" step="5">
-                                <div class="gradient-factor-labels">
-                                    <span>60% (Aggressive)</span>
-                                    <span>100% (Conservative)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- VVal-18 Gradient Factor Control -->
-                    <div class="control-group">
-                        <h4>⚙️ VVal-18 Gradient Factors</h4>
-                        <div class="gradient-factor-controls">
-                            <div class="gradient-factor-control">
-                                <label for="vval18-gf-low">GF Low: <span id="vval18-gf-low-display">30</span>%</label>
-                                <input type="range" id="vval18-gf-low" min="10" max="50" value="30" step="5">
-                                <div class="gradient-factor-labels">
-                                    <span>10% (Aggressive)</span>
-                                    <span>50% (Conservative)</span>
-                                </div>
-                            </div>
-                            <div class="gradient-factor-control">
-                                <label for="vval18-gf-high">GF High: <span id="vval18-gf-high-display">85</span>%</label>
-                                <input type="range" id="vval18-gf-high" min="60" max="100" value="85" step="5">
-                                <div class="gradient-factor-labels">
-                                    <span>60% (Aggressive)</span>
-                                    <span>100% (Conservative)</span>
+                            
+                            <!-- VVal-18 Settings -->
+                            <div id="vval18-settings" class="model-settings-panel" style="display: none;">
+                                <div class="gradient-factor-controls">
+                                    <div class="gradient-factor-control">
+                                        <label for="unified-vval18-gf-low">GF Low: <span id="unified-vval18-gf-low-display">30</span>%</label>
+                                        <input type="range" id="unified-vval18-gf-low" min="10" max="50" value="30" step="5">
+                                        <div class="gradient-factor-labels">
+                                            <span>10% (Aggressive)</span>
+                                            <span>50% (Conservative)</span>
+                                        </div>
+                                    </div>
+                                    <div class="gradient-factor-control">
+                                        <label for="unified-vval18-gf-high">GF High: <span id="unified-vval18-gf-high-display">85</span>%</label>
+                                        <input type="range" id="unified-vval18-gf-high" min="60" max="100" value="85" step="5">
+                                        <div class="gradient-factor-labels">
+                                            <span>60% (Aggressive)</span>
+                                            <span>100% (Conservative)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
