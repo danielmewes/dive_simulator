@@ -829,7 +829,8 @@
                 }
                 
                 const conservatismFactor = 1.0 - (this.conservatism * 0.1);
-                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const safetyFactor = 1.0 / this.safetyFactor; // Safety factor reduces allowable loading
+                const allowableLoading = comp.mValue * conservatismFactor * safetyFactor;
                 const ceilingPressure = totalLoading - allowableLoading;
                 const ceilingDepth = (ceilingPressure - this.surfacePressure) * 10;
                 
@@ -870,7 +871,8 @@
                 }
                 
                 const conservatismFactor = 1.0 - (this.conservatism * 0.1);
-                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const safetyFactor = 1.0 / this.safetyFactor; // Safety factor reduces allowable loading
+                const allowableLoading = comp.mValue * conservatismFactor * safetyFactor;
                 const maxAllowableAtDepth = allowableLoading + ambientPressure;
                 
                 if (totalLoading > maxAllowableAtDepth) {
@@ -902,7 +904,8 @@
                 let totalLoading = comp.nitrogenLoading + comp.heliumLoading;
                 
                 const conservatismFactor = 1.0 - (this.conservatism * 0.1);
-                const allowableLoading = comp.mValue * conservatismFactor * this.safetyFactor;
+                const safetyFactor = 1.0 / this.safetyFactor; // Safety factor reduces allowable loading
+                const allowableLoading = comp.mValue * conservatismFactor * safetyFactor;
                 const maxAllowableLoading = this.currentDiveState.ambientPressure + allowableLoading;
                 
                 if (totalLoading > maxAllowableLoading) {

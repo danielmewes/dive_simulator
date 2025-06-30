@@ -327,7 +327,7 @@ export class Nmri98Model extends DecompressionModel {
     
     // Calculate ceiling pressure
     const ceilingPressure = totalLoading - allowableLoading;
-    const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+    const ceilingDepth = (ceilingPressure - this.surfacePressure) * 10;
 
     return Math.max(0, ceilingDepth);
   }
@@ -349,7 +349,8 @@ export class Nmri98Model extends DecompressionModel {
       }
 
       const conservatismFactor = 1.0 - (this.parameters.conservatism * 0.1);
-      const allowableLoading = compartment.mValue * conservatismFactor * this.parameters.safetyFactor;
+      const safetyFactor = 1.0 / this.parameters.safetyFactor; // Safety factor reduces allowable loading
+      const allowableLoading = compartment.mValue * conservatismFactor * safetyFactor;
       const maxAllowableAtDepth = allowableLoading + ambientPressure;
 
       if (totalLoading > maxAllowableAtDepth) {
@@ -388,7 +389,8 @@ export class Nmri98Model extends DecompressionModel {
       
       // Calculate inert gas risk
       const conservatismFactor = 1.0 - (this.parameters.conservatism * 0.1);
-      const allowableLoading = compartment.mValue * conservatismFactor * this.parameters.safetyFactor;
+      const safetyFactor = 1.0 / this.parameters.safetyFactor; // Safety factor reduces allowable loading
+      const allowableLoading = compartment.mValue * conservatismFactor * safetyFactor;
       const maxAllowableLoading = this.currentDiveState.ambientPressure + allowableLoading;
       
       if (totalLoading > maxAllowableLoading) {
