@@ -287,7 +287,7 @@ class DiveSimulator {
             
             // Update decompression schedule display visibility
             const scheduleElement = document.getElementById(`${modelName}-schedule`);
-            if (scheduleElement && scheduleElement.parentElement) {
+            if (scheduleElement && scheduleElement.parentElement && scheduleElement.parentElement.classList.contains('schedule-column')) {
                 scheduleElement.parentElement.style.display = this.enabledModels[modelName] ? 'block' : 'none';
             }
         });
