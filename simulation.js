@@ -662,6 +662,16 @@ class DiveSimulator {
                         tension: 0.4,
                         borderDash: [5, 2],
                         yAxisID: 'rate'
+                    },
+                    {
+                        label: 'Dive Profile',
+                        data: [],
+                        borderColor: '#94a3b8',
+                        backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                        fill: true,
+                        tension: 0.2,
+                        yAxisID: 'depth',
+                        borderDash: [2, 2]
                     }
                 ]
             },
@@ -675,7 +685,7 @@ class DiveSimulator {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Bubble Model Internal Parameters',
+                        text: 'Bubble Model Internal Parameters with Dive Profile',
                         color: '#e2e8f0'
                     },
                     legend: {
@@ -743,6 +753,19 @@ class DiveSimulator {
                         grid: {
                             drawOnChartArea: false,
                         },
+                    },
+                    depth: {
+                        type: 'linear',
+                        position: 'right',
+                        reverse: true, // Depth increases downward
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Depth (m)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { display: false } // Hide grid for depth to avoid overlap
                     }
                 }
             }
@@ -1358,6 +1381,9 @@ class DiveSimulator {
         this.bubbleChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.bvm && h.models.bvm.bubbleFormationRate !== undefined ? h.models.bvm.bubbleFormationRate : 0
         );
+        
+        // Dive profile overlay
+        this.bubbleChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
         
         this.bubbleChart.update('none');
         
