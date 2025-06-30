@@ -42,6 +42,9 @@ class DiveSimulator {
         this.vval18GradientFactors = { low: 30, high: 85 };
         this.rgbmConservatism = 2;
         
+        // TBDM settings
+        this.tbdmConservatismFactor = 1.0; // Default TBDM conservatism
+        
         // Zoom state
         this.zoomMode = 'full'; // 'full' or 'recent'
         
@@ -77,8 +80,13 @@ class DiveSimulator {
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
                 }),
+<<<<<<< HEAD
                 rgbm: window.DecompressionSimulator.createModel('rgbm', {
                     conservatism: this.rgbmConservatism
+=======
+                tbdm: window.DecompressionSimulator.createModel('tbdm', { 
+                    conservatismFactor: this.tbdmConservatismFactor 
+>>>>>>> origin/sculptor/masked-coot-of-valor
                 })
             };
             console.log('✅ Decompression models initialized successfully');
@@ -333,7 +341,8 @@ class DiveSimulator {
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
             vval18: 'VVal-18 Thalmann',
-            rgbm: 'RGBM (folded)'
+            rgbm: 'RGBM (folded)',
+            tbdm: 'TBDM'
         };
         
         let foundValidOption = false;
@@ -1095,6 +1104,7 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
+<<<<<<< HEAD
     updateBvmConservatism(newConservatism) {
         this.bvmConservatism = newConservatism;
         
@@ -1144,6 +1154,28 @@ class DiveSimulator {
         document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - C${newConservatism}`;
         
         console.log(`RGBM conservatism updated to ${newConservatism}`);
+=======
+    updateTbdmConservatism(newConservatism) {
+        this.tbdmConservatismFactor = newConservatism;
+        
+        this.updateModelWithNewParameters(
+            'tbdm', 
+            'tbdm', 
+            { conservatismFactor: newConservatism },
+            '#tbdm-title',
+            `TBDM CF:${newConservatism.toFixed(1)}`
+        );
+        
+        // Also update the schedule title
+        document.getElementById('tbdm-schedule-title').textContent = `TBDM CF:${newConservatism.toFixed(1)}`;
+        
+        console.log(`TBDM conservatism updated to ${newConservatism}`);
+    }
+    
+    updateTbdmBodyTemperature(newTemp) {
+        // For now, just log the change - TBDM model would need to be extended for real-time temperature updates
+        console.log(`TBDM body temperature updated to ${newTemp}°C (Note: requires model reinitialization)`);
+>>>>>>> origin/sculptor/masked-coot-of-valor
     }
     
     setupUnifiedModelSettings() {
@@ -1154,8 +1186,12 @@ class DiveSimulator {
         const vpmBPanel = document.getElementById('vpmb-settings');
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
+<<<<<<< HEAD
         const bvmPanel = document.getElementById('bvm-settings');
         const rgbmPanel = document.getElementById('rgbm-settings');
+=======
+        const tbdmPanel = document.getElementById('tbdm-settings');
+>>>>>>> origin/sculptor/masked-coot-of-valor
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -1163,8 +1199,12 @@ class DiveSimulator {
             vpmBPanel.style.display = 'none';
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
+<<<<<<< HEAD
             bvmPanel.style.display = 'none';
             rgbmPanel.style.display = 'none';
+=======
+            tbdmPanel.style.display = 'none';
+>>>>>>> origin/sculptor/masked-coot-of-valor
             
             // Show the selected panel
             switch(selectedModel) {
@@ -1183,8 +1223,13 @@ class DiveSimulator {
                 case 'vval18':
                     vval18Panel.style.display = 'block';
                     break;
+<<<<<<< HEAD
                 case 'rgbm':
                     rgbmPanel.style.display = 'block';
+=======
+                case 'tbdm':
+                    tbdmPanel.style.display = 'block';
+>>>>>>> origin/sculptor/masked-coot-of-valor
                     break;
             }
         };
@@ -1243,6 +1288,7 @@ class DiveSimulator {
             this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
         });
         
+<<<<<<< HEAD
         // BVM(3) controls
         const bvmConservatismSlider = document.getElementById('unified-bvm-conservatism');
         const bvmConservatismDisplay = document.getElementById('unified-bvm-conservatism-display');
@@ -1269,6 +1315,24 @@ class DiveSimulator {
             const newConservatism = parseInt(e.target.value);
             rgbmConservatismDisplay.textContent = newConservatism;
             this.updateRgbmConservatism(newConservatism);
+=======
+        // TBDM controls
+        const tbdmConservatismSlider = document.getElementById('unified-tbdm-conservatism');
+        const tbdmConservatismDisplay = document.getElementById('unified-tbdm-conservatism-display');
+        const tbdmBodyTempSlider = document.getElementById('unified-tbdm-body-temp');
+        const tbdmBodyTempDisplay = document.getElementById('unified-tbdm-body-temp-display');
+        
+        tbdmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseFloat(e.target.value);
+            tbdmConservatismDisplay.textContent = newConservatism.toFixed(1);
+            this.updateTbdmConservatism(newConservatism);
+        });
+        
+        tbdmBodyTempSlider.addEventListener('input', (e) => {
+            const newTemp = parseFloat(e.target.value);
+            tbdmBodyTempDisplay.textContent = newTemp.toFixed(1);
+            this.updateTbdmBodyTemperature(newTemp);
+>>>>>>> origin/sculptor/masked-coot-of-valor
         });
     }
     
@@ -1330,14 +1394,25 @@ class DiveSimulator {
         document.getElementById('unified-rgbm-conservatism').value = 2;
         document.getElementById('unified-rgbm-conservatism-display').textContent = '2';
         
+        // Reset TBDM controls
+        document.getElementById('unified-tbdm-conservatism').value = 1.0;
+        document.getElementById('unified-tbdm-conservatism-display').textContent = '1.0';
+        document.getElementById('unified-tbdm-body-temp').value = 37.0;
+        document.getElementById('unified-tbdm-body-temp-display').textContent = '37.0';
+        
         // Reset model titles to default
         document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
+<<<<<<< HEAD
         document.getElementById('bvm-result').querySelector('h4').textContent = 'BVM(3)';
         document.getElementById('rgbm-title').textContent = 'RGBM (folded)';
         document.getElementById('rgbm-schedule-title').textContent = 'RGBM (folded)';
+=======
+        document.getElementById('tbdm-title').textContent = 'TBDM CF:1.0';
+        document.getElementById('tbdm-schedule-title').textContent = 'TBDM CF:1.0';
+>>>>>>> origin/sculptor/masked-coot-of-valor
         
         // Reset zoom to full view
         this.zoomMode = 'full';
@@ -1839,7 +1914,8 @@ class DiveSimulator {
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
             vval18: 'VVal-18 Thalmann',
-            rgbm: 'RGBM (folded)'
+            rgbm: 'RGBM (folded)',
+            tbdm: 'TBDM'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
