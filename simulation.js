@@ -458,6 +458,20 @@ class DiveSimulator {
                         tension: 0.4
                     },
                     {
+                        label: 'NMRI98 - Fast Tissues',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'NMRI98 - Slow Tissues',
+                        data: [],
+                        borderColor: '#d97706',
+                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        tension: 0.4
+                    },
+                    {
                         label: 'Ambient Pressure',
                         data: [],
                         borderColor: '#ffffff',
@@ -562,6 +576,15 @@ class DiveSimulator {
                         borderColor: '#06d6a0',
                         backgroundColor: 'rgba(6, 214, 160, 0.1)',
                         borderDash: [2, 6],
+                        tension: 0.2,
+                        yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (NMRI98)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderDash: [10, 5],
                         tension: 0.2,
                         yAxisID: 'depth'
                     }
@@ -1682,8 +1705,26 @@ class DiveSimulator {
             return h.models.vval18.tissueLoadings[2];
         });
         
+        // NMRI98 fast tissues (compartment 1 - Fast: 8 min) - Dataset 8
+        this.tissueChart.data.datasets[8].hidden = !this.enabledModels.nmri98;
+        this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
+            if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[0]) {
+                return 1.013;
+            }
+            return h.models.nmri98.tissueLoadings[0];
+        });
+        
+        // NMRI98 slow tissues (compartment 3 - Slow: 120 min) - Dataset 9
+        this.tissueChart.data.datasets[9].hidden = !this.enabledModels.nmri98;
+        this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
+            if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[2]) {
+                return 1.013;
+            }
+            return h.models.nmri98.tissueLoadings[2];
+        });
+        
         // Ambient pressure overlay
-        this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        this.tissueChart.data.datasets[10].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
         
@@ -1713,6 +1754,12 @@ class DiveSimulator {
         this.profileChart.data.datasets[4].hidden = !this.enabledModels.vval18;
         this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
+        );
+        
+        // NMRI98 ceiling - Dataset 5
+        this.profileChart.data.datasets[5].hidden = !this.enabledModels.nmri98;
+        this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
+            h.models.nmri98 ? h.models.nmri98.ceiling : 0
         );
         this.profileChart.update('default');
         
@@ -1757,7 +1804,7 @@ class DiveSimulator {
         // Update detailed tissue chart
         this.updateDetailedTissueChart();
         
-        // Update bubble parameters chart
+        // Update bubble parameters chart (VPM-B and BVM only - NMRI98 and others don't have bubble parameters)
         this.bubbleChart.data.labels = timeLabels;
         
         // VPM-B Bubble Count (Compartment 1) - Dataset 0
