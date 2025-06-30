@@ -6,7 +6,7 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 
 1. **Open the simulator**: Open `index.html` in a modern web browser
 2. **Start diving**: Use the depth slider or buttons to descend
-3. **Monitor models**: Watch all 4 decompression models in real-time
+3. **Monitor models**: Watch all 5 decompression models in real-time
 4. **Switch gases**: Use the gas controls to change breathing mix
 5. **Speed up time**: Use time acceleration for longer dives
 
@@ -63,6 +63,13 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 - Temperature and metabolic effects on bubble dynamics
 - Adjustable conservatism factors (0.5-2.0) for mission-specific risk management
 - Originally developed for space suit decompression scenarios
+
+### ✅ NMRI98 LEM (Linear Exponential Model)
+- Naval Medical Research Institute Linear Exponential Model implementation
+- 3-compartment tissue model with advanced linear-exponential kinetics
+- Oxygen tracking and toxicity risk assessment
+- Configurable conservatism levels, safety factors, and maximum DCS risk
+- Enhanced decompression modeling with oxygen contribution calculations
 
 ## 🎮 Controls Guide
 
@@ -161,13 +168,14 @@ npm run demo        # Interactive model demonstrations
 
 ### Programmatic Usage
 ```typescript
-import { VpmBModel, BuhlmannModel, VVal18ThalmannModel, TbdmModel } from './src/models';
+import { VpmBModel, BuhlmannModel, VVal18ThalmannModel, TbdmModel, Nmri98Model } from './src/models';
 
 // Create models with different conservatism settings
 const vpmModel = new VpmBModel(3);
 const buhlmannModel = new BuhlmannModel({ low: 30, high: 85 });
 const vval18Model = new VVal18ThalmannModel({ maxDcsRisk: 2.5 });
 const tbdmModel = new TbdmModel({ conservatismFactor: 1.2, bodyTemperature: 37.0 });
+const nmri98Model = new Nmri98Model({ conservatism: 3, enableOxygenTracking: true });
 
 // Define gas mix (Trimix 21/35)
 const trimix2135 = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - this.oxygen - this.helium; } };
