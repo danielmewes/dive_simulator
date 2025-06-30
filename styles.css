@@ -8,7 +8,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #0a1929 0%, #1a365d 100%);
+    background: linear-gradient(180deg, #1e3a8a 0%, #000000 100%);
     color: #e2e8f0;
     min-height: 100vh;
 }
@@ -869,6 +869,7 @@ button:hover {
 .pulsing {
     animation: pulse 2s infinite;
 }
+
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
