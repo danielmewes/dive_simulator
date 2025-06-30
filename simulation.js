@@ -383,7 +383,8 @@ class DiveSimulator {
             vval18: 'VVal-18 Thalmann',
             rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
-            nmri98: 'NMRI98 LEM'
+            nmri98: 'NMRI98 LEM',
+            hills: 'Thermodynamic (Hills)'
         };
         
         let foundValidOption = false;
@@ -1671,6 +1672,10 @@ class DiveSimulator {
         this.nmri98MaxDcsRisk = 2.0;
         this.nmri98SafetyFactor = 1.2;
         this.nmri98EnableOxygenTracking = true;
+        this.hillsConservatismFactor = 1.0;
+        this.hillsCoreTemperature = 37.0;
+        this.hillsMetabolicRate = 1.2;
+        this.hillsPerfusionMultiplier = 1.0;
         
         // Reset unified model settings controls
         document.getElementById('unified-vpm-conservatism').value = 2;
@@ -1708,6 +1713,16 @@ class DiveSimulator {
         document.getElementById('unified-tbdm-body-temp').value = 37.0;
         document.getElementById('unified-tbdm-body-temp-display').textContent = '37.0';
         
+        // Reset Hills controls
+        document.getElementById('unified-hills-conservatism').value = 1.0;
+        document.getElementById('unified-hills-conservatism-display').textContent = '1.0';
+        document.getElementById('unified-hills-core-temp').value = 37.0;
+        document.getElementById('unified-hills-core-temp-display').textContent = '37.0';
+        document.getElementById('unified-hills-metabolic-rate').value = 1.2;
+        document.getElementById('unified-hills-metabolic-rate-display').textContent = '1.2';
+        document.getElementById('unified-hills-perfusion').value = 1.0;
+        document.getElementById('unified-hills-perfusion-display').textContent = '1.0';
+        
         // Reset model titles to default
         document.getElementById('buhlmann-result').querySelector('h4').textContent = 'Bühlmann ZH-L16C';
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
@@ -1719,6 +1734,8 @@ class DiveSimulator {
         document.getElementById('tbdm-title').textContent = 'TBDM CF:1.0';
         document.getElementById('tbdm-schedule-title').textContent = 'TBDM CF:1.0';
         document.getElementById('nmri98-result').querySelector('h4').textContent = 'NMRI98 LEM';
+        document.getElementById('hills-title').textContent = 'Thermodynamic (Hills)';
+        document.getElementById('hills-schedule-title').textContent = 'Thermodynamic (Hills)';
         
         // Reset zoom to full view
         this.zoomMode = 'full';
@@ -2285,7 +2302,8 @@ class DiveSimulator {
             vval18: 'VVal-18 Thalmann',
             rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
-            nmri98: 'NMRI98 LEM'
+            nmri98: 'NMRI98 LEM',
+            hills: 'Thermodynamic (Hills)'
         };
         this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - ${modelNames[selectedModel]} (${compartmentCount} compartments)`;
         
