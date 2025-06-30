@@ -10,11 +10,11 @@ class DiveSimulator {
         this.enabledModels = {
             buhlmann: true,
             vpmb: true,
-            bvm: true,
-            vval18: true,
-            rgbm: true,
-            tbdm: true,
-            nmri98: true
+            bvm: false,
+            vval18: false,
+            rgbm: false,
+            tbdm: false,
+            nmri98: false
         };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
