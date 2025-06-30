@@ -941,8 +941,8 @@ button:hover {
 }
 
 .bubble-2 {
-    width: 25px;
-    height: 25px;
+    width: 45px;
+    height: 45px;
     left: 20%;
     animation-duration: 12s;
     animation-delay: 2s;
@@ -959,8 +959,8 @@ button:hover {
 }
 
 .bubble-4 {
-    width: 30px;
-    height: 30px;
+    width: 60px;
+    height: 60px;
     left: 50%;
     animation-duration: 15s;
     animation-delay: 1s;
@@ -1004,8 +1004,8 @@ button:hover {
 }
 
 .bubble-9 {
-    width: 28px;
-    height: 28px;
+    width: 55px;
+    height: 55px;
     left: 40%;
     animation-duration: 14s;
     animation-delay: 2.5s;
