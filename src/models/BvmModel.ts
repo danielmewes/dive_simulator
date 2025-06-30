@@ -54,6 +54,7 @@ export class BvmModel extends DecompressionModel {
   private bvmCompartments!: BvmCompartment[];
   private bubbleVolumeParameters!: BubbleVolumeParameters;
   private conservatismLevel!: number; // 0-5, where 0 is least conservative
+  private maxDcsRisk!: number; // Maximum acceptable DCS risk percentage (0-100)
 
   // BVM(3) specific constants
   private readonly WATER_VAPOR_PRESSURE = 0.0627; // bar at 37°C
@@ -69,10 +70,11 @@ export class BvmModel extends DecompressionModel {
   private readonly MECHANICAL_RESISTANCE = [1.0, 1.2, 1.5]; // Mechanical resistance accelerates resolution
   private readonly RISK_WEIGHTINGS = [0.6, 0.3, 0.1]; // Weighting factors for risk calculation
 
-  constructor(conservatismLevel: number = 3) {
+  constructor(conservatismLevel: number = 3, maxDcsRisk: number = 5.0) {
     super();
     
     this.conservatismLevel = Math.max(0, Math.min(5, conservatismLevel));
+    this.maxDcsRisk = Math.max(0.1, Math.min(100, maxDcsRisk)); // Clamp between 0.1% and 100%
     
     this.bubbleVolumeParameters = {
       criticalBubbleVolume: 100.0, // Arbitrary units
@@ -224,12 +226,26 @@ export class BvmModel extends DecompressionModel {
   }
 
   public canAscendDirectly(): boolean {
-    const totalRisk = this.calculateTotalDcsRisk();
-    return totalRisk < this.getAcceptableRiskThreshold();
+    const currentRiskPercentage = this.calculateDCSRisk();
+    return currentRiskPercentage <= this.maxDcsRisk;
   }
 
   public getModelName(): string {
     return `BVM(3)+${this.conservatismLevel}`;
+  }
+
+  /**
+   * Get the configured maximum DCS risk percentage
+   */
+  public getMaxDcsRisk(): number {
+    return this.maxDcsRisk;
+  }
+
+  /**
+   * Set a new maximum DCS risk percentage
+   */
+  public setMaxDcsRisk(maxDcsRisk: number): void {
+    this.maxDcsRisk = Math.max(0.1, Math.min(100, maxDcsRisk));
   }
 
   /**
@@ -323,7 +339,7 @@ export class BvmModel extends DecompressionModel {
   }
 
   private calculateAllowablePressureDrop(compartment: BvmCompartment): number {
-    // Allowable pressure drop based on bubble volume dynamics
+    // Allowable pressure drop based on bubble volume dynamics and configured risk threshold
     const currentBubbleVolume = compartment.bubbleVolume;
     const criticalVolume = this.bubbleVolumeParameters.criticalBubbleVolume;
     
@@ -331,28 +347,36 @@ export class BvmModel extends DecompressionModel {
     const volumeRatio = currentBubbleVolume / criticalVolume;
     const basePressureDrop = 1.0; // bar
     
-    return basePressureDrop / (1.0 + volumeRatio);
+    // Adjust based on configured maximum DCS risk
+    const riskFactor = 1.0 - (this.maxDcsRisk / 100.0); // Convert percentage to factor
+    const riskAdjustment = 0.5 + (riskFactor * 0.5); // Scale from 0.5 to 1.0
+    
+    return (basePressureDrop * riskAdjustment) / (1.0 + volumeRatio);
   }
 
   private calculateStopTime(depth: number): number {
-    // BVM(3) stop time calculation based on bubble resolution
+    // BVM(3) stop time calculation based on bubble resolution and risk threshold
     const ceiling = this.calculateCeiling();
     if (depth <= ceiling) {
       return 0; // No stop needed at this depth
     }
 
-    // Calculate time needed for bubble volumes to reduce sufficiently
+    // Calculate time needed for bubble volumes to reduce sufficiently to meet risk threshold
     let maxTimeNeeded = 0;
     
     for (const compartment of this.bvmCompartments) {
-      if (compartment.bubbleVolume > this.bubbleVolumeParameters.criticalBubbleVolume) {
-        const excessVolume = compartment.bubbleVolume - this.bubbleVolumeParameters.criticalBubbleVolume;
+      // Calculate target bubble volume based on risk threshold
+      const riskFactor = this.maxDcsRisk / 100.0;
+      const targetBubbleVolume = this.bubbleVolumeParameters.criticalBubbleVolume * (1.0 + riskFactor);
+      
+      if (compartment.bubbleVolume > targetBubbleVolume) {
+        const excessVolume = compartment.bubbleVolume - targetBubbleVolume;
         const timeNeeded = excessVolume / (compartment.bubbleResolutionRate + 0.001); // Prevent division by zero
         maxTimeNeeded = Math.max(maxTimeNeeded, timeNeeded);
       }
     }
 
-    return Math.max(1, Math.min(20, maxTimeNeeded)); // 1-20 minutes
+    return Math.max(1, Math.min(30, maxTimeNeeded)); // 1-30 minutes, extended for risk-based calculation
   }
 
   private getAcceptableRiskThreshold(): number {

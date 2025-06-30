@@ -361,9 +361,16 @@
     
     // === BVM(3) Model ===
     class BvmModel extends DecompressionModel {
-        constructor(conservatism = 2) {
+        constructor(options = {}) {
             super();
-            this.conservatism = conservatism;
+            // Handle legacy single parameter or new options object
+            if (typeof options === 'number') {
+                this.conservatism = options;
+                this.maxDcsRisk = 5.0; // Default value
+            } else {
+                this.conservatism = options.conservatism || 2;
+                this.maxDcsRisk = options.maxDcsRisk || 5.0;
+            }
             this.initializeTissueCompartments();
         }
         
@@ -440,7 +447,11 @@
                 const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
                 const bubblePressure = compartment.bubbleVolume * 10; // Simplified conversion
                 
-                const ceiling = Math.max(0, (totalInertGas + bubblePressure - this.surfacePressure - this.conservatism * 0.5) * 10);
+                // Adjust ceiling based on both conservatism and maximum DCS risk
+                const riskFactor = 1.0 - (this.maxDcsRisk / 100.0);
+                const riskAdjustment = 0.5 + (riskFactor * 0.5); // Scale from 0.5 to 1.0
+                
+                const ceiling = Math.max(0, (totalInertGas + bubblePressure - this.surfacePressure - this.conservatism * 0.5 * riskAdjustment) * 10);
                 maxCeiling = Math.max(maxCeiling, ceiling);
             });
             
@@ -465,7 +476,10 @@
         }
         
         canAscendDirectly() {
-            return this.calculateCeiling() <= 0;
+            // Check both ceiling constraint and maximum DCS risk constraint
+            const ceilingOk = this.calculateCeiling() <= 0;
+            const riskOk = this.calculateDCSRisk() <= this.maxDcsRisk;
+            return ceilingOk && riskOk;
         }
         
         calculateTotalDcsRisk() {
@@ -533,6 +547,21 @@
                 nitrogenLoading: compartment.nitrogenLoading,
                 heliumLoading: compartment.heliumLoading
             };
+        }
+        
+        calculateDCSRisk() {
+            // Calculate DCS risk as a percentage (0-100)
+            const totalRisk = this.calculateTotalDcsRisk();
+            const riskPercentage = Math.min(100, totalRisk * 10); // Scale to percentage
+            return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+        }
+        
+        getMaxDcsRisk() {
+            return this.maxDcsRisk;
+        }
+        
+        setMaxDcsRisk(maxDcsRisk) {
+            this.maxDcsRisk = Math.max(0.1, Math.min(100, maxDcsRisk));
         }
     }
     
@@ -708,7 +737,10 @@
             case 'vpmb':
                 return new VpmBModel(options.conservatism || 2);
             case 'bvm':
-                return new BvmModel(options.conservatism || 2);
+                return new BvmModel({
+                    conservatism: options.conservatism || 2,
+                    maxDcsRisk: options.maxDcsRisk || 5.0
+                });
             case 'vval18':
                 return new VVal18ThalmannModel({
                     dcsRiskPercent: options.dcsRiskPercent || 2.3,

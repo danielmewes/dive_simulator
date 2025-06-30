@@ -26,6 +26,10 @@ class DiveSimulator {
         this.currentGasMix = { oxygen: 21, helium: 0 };
         this.vpmConservatism = 2; // Default VPM conservatism level
         
+        // BVM settings
+        this.bvmConservatism = 3; // Default BVM conservatism level
+        this.bvmMaxDcsRisk = 5.0; // Default maximum DCS risk percentage
+        
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
@@ -56,7 +60,10 @@ class DiveSimulator {
                     gradientFactorHigh: this.buhlmannGradientFactors.high 
                 }),
                 vpmb: window.DecompressionSimulator.createModel('vpmb', { conservatism: this.vpmConservatism }),
-                bvm: window.DecompressionSimulator.createModel('bvm'),
+                bvm: window.DecompressionSimulator.createModel('bvm', { 
+                    conservatism: this.bvmConservatism, 
+                    maxDcsRisk: this.bvmMaxDcsRisk 
+                }),
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
@@ -904,6 +911,38 @@ class DiveSimulator {
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
+    updateBvmConservatism(newConservatism) {
+        this.bvmConservatism = newConservatism;
+        
+        // Update BVM model with new conservatism level
+        const currentMaxDcsRisk = this.bvmMaxDcsRisk || 5.0;
+        this.updateModelWithNewParameters(
+            'bvm', 
+            'bvm', 
+            { conservatism: newConservatism, maxDcsRisk: currentMaxDcsRisk },
+            '#bvm-result h4',
+            `BVM(${newConservatism})`
+        );
+        
+        console.log(`BVM conservatism updated to ${newConservatism}`);
+    }
+    
+    updateBvmMaxDcsRisk(newMaxDcsRisk) {
+        this.bvmMaxDcsRisk = newMaxDcsRisk;
+        
+        // Update BVM model with new maximum DCS risk
+        const currentConservatism = this.bvmConservatism || 3;
+        this.updateModelWithNewParameters(
+            'bvm', 
+            'bvm', 
+            { conservatism: currentConservatism, maxDcsRisk: newMaxDcsRisk },
+            '#bvm-result h4',
+            `BVM(${currentConservatism})`
+        );
+        
+        console.log(`BVM maximum DCS risk updated to ${newMaxDcsRisk}%`);
+    }
+    
     setupUnifiedModelSettings() {
         // Model selector dropdown
         const modelSelector = document.getElementById('model-settings-selector');
@@ -912,6 +951,7 @@ class DiveSimulator {
         const vpmBPanel = document.getElementById('vpmb-settings');
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
+        const bvmPanel = document.getElementById('bvm-settings');
         
         // Function to show/hide model settings panels based on selection
         const showModelSettings = (selectedModel) => {
@@ -919,6 +959,7 @@ class DiveSimulator {
             vpmBPanel.style.display = 'none';
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
+            bvmPanel.style.display = 'none';
             
             // Show the selected panel
             switch(selectedModel) {
@@ -927,6 +968,9 @@ class DiveSimulator {
                     break;
                 case 'buhlmann':
                     buhlmannPanel.style.display = 'block';
+                    break;
+                case 'bvm':
+                    bvmPanel.style.display = 'block';
                     break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
@@ -987,6 +1031,24 @@ class DiveSimulator {
             vval18GfHighDisplay.textContent = newGfHigh;
             this.updateVval18GradientFactors(this.vval18GradientFactors.low, newGfHigh);
         });
+        
+        // BVM(3) controls
+        const bvmConservatismSlider = document.getElementById('unified-bvm-conservatism');
+        const bvmConservatismDisplay = document.getElementById('unified-bvm-conservatism-display');
+        const bvmMaxDcsRiskSlider = document.getElementById('unified-bvm-max-dcs-risk');
+        const bvmMaxDcsRiskDisplay = document.getElementById('unified-bvm-max-dcs-risk-display');
+        
+        bvmConservatismSlider.addEventListener('input', (e) => {
+            const newConservatism = parseInt(e.target.value);
+            bvmConservatismDisplay.textContent = newConservatism;
+            this.updateBvmConservatism(newConservatism);
+        });
+        
+        bvmMaxDcsRiskSlider.addEventListener('input', (e) => {
+            const newMaxDcsRisk = parseFloat(e.target.value);
+            bvmMaxDcsRiskDisplay.textContent = newMaxDcsRisk.toFixed(1);
+            this.updateBvmMaxDcsRisk(newMaxDcsRisk);
+        });
     }
     
     startSimulation() {
@@ -1021,6 +1083,8 @@ class DiveSimulator {
         document.getElementById('nitrogen').value = 79;
         this.currentGasMix = { oxygen: 21, helium: 0 };
         this.vpmConservatism = 2;
+        this.bvmConservatism = 3;
+        this.bvmMaxDcsRisk = 5.0;
         
         // Reset unified model settings controls
         document.getElementById('unified-vpm-conservatism').value = 2;
@@ -1033,6 +1097,10 @@ class DiveSimulator {
         document.getElementById('unified-vval18-gf-low-display').textContent = '30';
         document.getElementById('unified-vval18-gf-high').value = 85;
         document.getElementById('unified-vval18-gf-high-display').textContent = '85';
+        document.getElementById('unified-bvm-conservatism').value = 3;
+        document.getElementById('unified-bvm-conservatism-display').textContent = '3';
+        document.getElementById('unified-bvm-max-dcs-risk').value = 5.0;
+        document.getElementById('unified-bvm-max-dcs-risk-display').textContent = '5.0';
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
         
@@ -1041,6 +1109,7 @@ class DiveSimulator {
         document.getElementById('vval18-result').querySelector('h4').textContent = 'VVal-18 Thalmann';
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
+        document.getElementById('bvm-result').querySelector('h4').textContent = 'BVM(3)';
         
         // Reset zoom to full view
         this.zoomMode = 'full';

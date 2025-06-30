@@ -90,6 +90,7 @@
                                 <select id="model-settings-selector">
                                     <option value="vpmb">VPM-B</option>
                                     <option value="buhlmann">Bühlmann</option>
+                                    <option value="bvm">BVM(3)</option>
                                     <option value="vval18">VVal-18</option>
                                 </select>
                             </div>
@@ -146,6 +147,26 @@
                                             <span>60% (Aggressive)</span>
                                             <span>100% (Conservative)</span>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- BVM(3) Settings -->
+                            <div id="bvm-settings" class="model-settings-panel" style="display: none;">
+                                <div class="conservatism-control">
+                                    <label for="unified-bvm-conservatism">Conservatism Level: <span id="unified-bvm-conservatism-display">3</span></label>
+                                    <input type="range" id="unified-bvm-conservatism" min="0" max="5" value="3" step="1">
+                                    <div class="conservatism-labels">
+                                        <span>0 (Aggressive)</span>
+                                        <span>5 (Conservative)</span>
+                                    </div>
+                                </div>
+                                <div class="risk-control">
+                                    <label for="unified-bvm-max-dcs-risk">Max DCS Risk: <span id="unified-bvm-max-dcs-risk-display">5.0</span>%</label>
+                                    <input type="range" id="unified-bvm-max-dcs-risk" min="0.1" max="20.0" value="5.0" step="0.1">
+                                    <div class="risk-labels">
+                                        <span>0.1% (Very Conservative)</span>
+                                        <span>20% (Aggressive)</span>
                                     </div>
                                 </div>
                             </div>
