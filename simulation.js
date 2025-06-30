@@ -543,6 +543,20 @@ class DiveSimulator {
                         tension: 0.4
                     },
                     {
+                        label: 'Hills - Fast Tissues',
+                        data: [],
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Hills - Slow Tissues',
+                        data: [],
+                        borderColor: '#0891b2',
+                        backgroundColor: 'rgba(8, 145, 178, 0.1)',
+                        tension: 0.4
+                    },
+                    {
                         label: 'Ambient Pressure',
                         data: [],
                         borderColor: '#ffffff',
@@ -677,6 +691,15 @@ class DiveSimulator {
                         borderDash: [10, 5],
                         tension: 0.2,
                         yAxisID: 'depth'
+                    },
+                    {
+                        label: 'Ceiling (Hills)',
+                        data: [],
+                        borderColor: '#0d9488',
+                        backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                        borderDash: [8, 4],
+                        tension: 0.2,
+                        yAxisID: 'depth'
                     }
                 ]
             },
@@ -788,6 +811,14 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#8b5cf6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'Hills Risk (%)',
+                        data: [],
+                        borderColor: '#0d9488',
+                        backgroundColor: 'rgba(13, 148, 136, 0.1)',
                         tension: 0.3,
                         yAxisID: 'risk'
                     },
@@ -2072,8 +2103,26 @@ class DiveSimulator {
             return h.models.nmri98.tissueLoadings[2];
         });
         
-        // Ambient pressure overlay - Dataset 14
-        this.tissueChart.data.datasets[14].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        // Hills fast tissues (compartment 1 - Fast: 2.5 min) - Dataset 14
+        this.tissueChart.data.datasets[14].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[14].data = zoomedHistory.map(h => {
+            if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[0]) {
+                return 1.013;
+            }
+            return h.models.hills.tissueLoadings[0];
+        });
+        
+        // Hills slow tissues (compartment 16 - Slow: 498 min) - Dataset 15
+        this.tissueChart.data.datasets[15].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[15].data = zoomedHistory.map(h => {
+            if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[15]) {
+                return 1.013;
+            }
+            return h.models.hills.tissueLoadings[15];
+        });
+        
+        // Ambient pressure overlay - Dataset 16
+        this.tissueChart.data.datasets[16].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
         
@@ -2122,6 +2171,12 @@ class DiveSimulator {
         this.profileChart.data.datasets[7].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.ceiling : 0
         );
+        
+        // Hills ceiling - Dataset 8
+        this.profileChart.data.datasets[8].hidden = !this.enabledModels.hills;
+        this.profileChart.data.datasets[8].data = zoomedHistory.map(h => 
+            h.models.hills ? h.models.hills.ceiling : 0
+        );
         this.profileChart.update('default');
         
         // Update DCS risk chart using model-specific calculations
@@ -2169,8 +2224,14 @@ class DiveSimulator {
             h.models.nmri98 ? h.models.nmri98.risk : 0
         );
         
-        // Dive profile overlay - Dataset 7 (always visible)
-        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => h.depth);
+        // Hills risk over time - Dataset 7
+        this.riskChart.data.datasets[7].hidden = !this.enabledModels.hills;
+        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => 
+            h.models.hills ? h.models.hills.risk : 0
+        );
+        
+        // Dive profile overlay - Dataset 8 (always visible)
+        this.riskChart.data.datasets[8].data = zoomedHistory.map(h => h.depth);
         
         this.riskChart.update('default');
         
