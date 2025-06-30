@@ -179,13 +179,15 @@
                 const a = compartment.a;
                 const b = compartment.b;
                 
-                // Calculate M-value with gradient factors
-                // At surface, use GF High; this is simplified - proper implementation would interpolate
+                // Calculate M-value with gradient factors using standard Bühlmann formula
+                // For ceiling calculation, we solve: totalInertGas <= (a * ambientPressure + b) * GF
+                // Rearranging: ambientPressure >= (totalInertGas / GF - b) / a
                 const gf = this.gradientFactorHigh;
-                const mValue = (totalInertGas - a * gf) / (gf - 1 + (b * gf));
-                const ceiling = Math.max(0, (mValue - this.surfacePressure) * 10);
-                
-                maxCeiling = Math.max(maxCeiling, ceiling);
+                if (gf > 0 && a > 0) {
+                    const requiredAmbientPressure = (totalInertGas / gf - b) / a;
+                    const ceiling = Math.max(0, (requiredAmbientPressure - this.surfacePressure) * 10);
+                    maxCeiling = Math.max(maxCeiling, ceiling);
+                }
             });
             
             return Math.ceil(maxCeiling / 3) * 3; // Round up to nearest 3m

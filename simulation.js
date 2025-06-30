@@ -486,23 +486,39 @@ class DiveSimulator {
     updateVpmConservatism(newConservatism) {
         this.vpmConservatism = newConservatism;
         
-        // Recreate the VPM-B model with new conservatism
-        const oldModel = this.models.vpmb;
-        this.models.vpmb = window.DecompressionSimulator.createModel('vpmb', { conservatism: newConservatism });
+        this.updateModelWithNewParameters(
+            'vpmb', 
+            'vpmb', 
+            { conservatism: newConservatism },
+            '#vpmb-title',
+            `VPM-B+${newConservatism}`
+        );
+        
+        // Also update the schedule title
+        document.getElementById('vpmb-schedule-title').textContent = `VPM-B+${newConservatism}`;
+        
+        console.log(`VPM-B conservatism updated to ${newConservatism}`);
+    }
+    
+    // Helper function to update model with new parameters while preserving state
+    updateModelWithNewParameters(modelKey, modelType, options, titleSelector, titleText) {
+        const oldModel = this.models[modelKey];
+        this.models[modelKey] = window.DecompressionSimulator.createModel(modelType, options);
         
         // Copy current state from old model to new model
         if (oldModel) {
             const currentState = oldModel.getDiveState();
-            this.models.vpmb.updateDiveState(currentState);
+            this.models[modelKey].updateDiveState(currentState);
             
             // Copy tissue loadings if possible
             const oldCompartments = oldModel.getTissueCompartments();
-            const newCompartments = this.models.vpmb.getTissueCompartments();
+            const newCompartments = this.models[modelKey].getTissueCompartments();
             
             if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
                 for (let i = 0; i < oldCompartments.length; i++) {
                     newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
                     newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
+                    // Copy any additional properties for specific models
                     if (oldCompartments[i].maxCrushingPressure !== undefined) {
                         newCompartments[i].maxCrushingPressure = oldCompartments[i].maxCrushingPressure;
                     }
@@ -510,82 +526,43 @@ class DiveSimulator {
             }
         }
         
-        // Update VPM title to show conservatism level
-        document.getElementById('vpmb-title').textContent = `VPM-B+${newConservatism}`;
-        document.getElementById('vpmb-schedule-title').textContent = `VPM-B+${newConservatism}`;
+        // Update title if provided
+        if (titleSelector && titleText) {
+            const titleElement = document.querySelector(titleSelector);
+            if (titleElement) {
+                titleElement.textContent = titleText;
+            }
+        }
         
         this.updateDisplay();
         this.updateCharts();
-        console.log(`VPM-B conservatism updated to ${newConservatism}`);
     }
     
     updateBuhlmannGradientFactors(newGfLow, newGfHigh) {
         this.buhlmannGradientFactors = { low: newGfLow, high: newGfHigh };
         
-        // Recreate the Bühlmann model with new gradient factors
-        const oldModel = this.models.buhlmann;
-        this.models.buhlmann = window.DecompressionSimulator.createModel('buhlmann', { 
-            gradientFactorLow: newGfLow, 
-            gradientFactorHigh: newGfHigh 
-        });
+        this.updateModelWithNewParameters(
+            'buhlmann', 
+            'buhlmann', 
+            { gradientFactorLow: newGfLow, gradientFactorHigh: newGfHigh },
+            '#buhlmann-result h4',
+            `Bühlmann (${newGfLow}/${newGfHigh})`
+        );
         
-        // Copy current state from old model to new model
-        if (oldModel) {
-            const currentState = oldModel.getDiveState();
-            this.models.buhlmann.updateDiveState(currentState);
-            
-            // Copy tissue loadings if possible
-            const oldCompartments = oldModel.getTissueCompartments();
-            const newCompartments = this.models.buhlmann.getTissueCompartments();
-            
-            if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
-                for (let i = 0; i < oldCompartments.length; i++) {
-                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
-                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
-                }
-            }
-        }
-        
-        // Update Bühlmann title to show gradient factors
-        document.getElementById('buhlmann-result').querySelector('h4').textContent = `Bühlmann (${newGfLow}/${newGfHigh})`;
-        
-        this.updateDisplay();
-        this.updateCharts();
         console.log(`Bühlmann gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
     updateVval18GradientFactors(newGfLow, newGfHigh) {
         this.vval18GradientFactors = { low: newGfLow, high: newGfHigh };
         
-        // Recreate the VVal-18 model with new gradient factors
-        const oldModel = this.models.vval18;
-        this.models.vval18 = window.DecompressionSimulator.createModel('vval18', { 
-            gradientFactorLow: newGfLow, 
-            gradientFactorHigh: newGfHigh 
-        });
+        this.updateModelWithNewParameters(
+            'vval18', 
+            'vval18', 
+            { gradientFactorLow: newGfLow, gradientFactorHigh: newGfHigh },
+            '#vval18-result h4',
+            `VVal-18 (${newGfLow}/${newGfHigh})`
+        );
         
-        // Copy current state from old model to new model
-        if (oldModel) {
-            const currentState = oldModel.getDiveState();
-            this.models.vval18.updateDiveState(currentState);
-            
-            // Copy tissue loadings if possible
-            const oldCompartments = oldModel.getTissueCompartments();
-            const newCompartments = this.models.vval18.getTissueCompartments();
-            
-            if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
-                for (let i = 0; i < oldCompartments.length; i++) {
-                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
-                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
-                }
-            }
-        }
-        
-        // Update VVal-18 title to show gradient factors
-        document.getElementById('vval18-result').querySelector('h4').textContent = `VVal-18 (${newGfLow}/${newGfHigh})`;
-        
-        this.updateDisplay();
-        this.updateCharts();
         console.log(`VVal-18 gradient factors updated to ${newGfLow}/${newGfHigh}`);
     }
     
@@ -625,6 +602,18 @@ class DiveSimulator {
         document.getElementById('vpm-conservatism-display').textContent = '2';
         this.currentGasMix = { oxygen: 21, helium: 0 };
         this.vpmConservatism = 2;
+        
+        // Reset gradient factor controls
+        document.getElementById('buhlmann-gf-low').value = 30;
+        document.getElementById('buhlmann-gf-low-display').textContent = '30';
+        document.getElementById('buhlmann-gf-high').value = 85;
+        document.getElementById('buhlmann-gf-high-display').textContent = '85';
+        document.getElementById('vval18-gf-low').value = 30;
+        document.getElementById('vval18-gf-low-display').textContent = '30';
+        document.getElementById('vval18-gf-high').value = 85;
+        document.getElementById('vval18-gf-high-display').textContent = '85';
+        this.buhlmannGradientFactors = { low: 30, high: 85 };
+        this.vval18GradientFactors = { low: 30, high: 85 };
         
         // Clear charts
         this.tissueChart.data.labels = [];
