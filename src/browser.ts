@@ -80,6 +80,7 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         metabolicRate: options.metabolicRate || 1.2,
         perfusionMultiplier: options.perfusionMultiplier || 1.0
       });
+      break;
     default:
       throw new Error('Unknown model type: ' + type);
   }
