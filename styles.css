@@ -574,6 +574,15 @@ button:hover {
     font-weight: bold;
 }
 
+/* Disabled model styling */
+.model-result[style*="display: none"] {
+    display: none !important;
+}
+
+.schedule-column[style*="display: none"] {
+    display: none !important;
+}
+
 /* Charts Section */
 .charts-section {
     background: rgba(255, 255, 255, 0.08);

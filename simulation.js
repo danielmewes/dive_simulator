@@ -7,6 +7,12 @@ class DiveSimulator {
     constructor() {
         // Simulation state
         this.models = {};
+        this.enabledModels = {
+            buhlmann: true,
+            vpmb: true,
+            bvm: true,
+            vval18: true
+        };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
         this.diveHistory = [];
@@ -35,6 +41,7 @@ class DiveSimulator {
         
         this.initializeModels();
         this.initializeEventListeners();
+        this.syncCheckboxStates(); // Sync checkbox states with enabledModels on page load
         this.initializeCharts();
         this.updateDisplay();
         
@@ -200,6 +207,27 @@ class DiveSimulator {
         document.getElementById('zoom-recent').addEventListener('click', () => {
             this.setZoomMode('recent');
         });
+        
+        // Model selection checkboxes
+        document.getElementById('model-buhlmann').addEventListener('change', (e) => {
+            this.enabledModels.buhlmann = e.target.checked;
+            this.updateModelVisibility();
+        });
+        
+        document.getElementById('model-vpmb').addEventListener('change', (e) => {
+            this.enabledModels.vpmb = e.target.checked;
+            this.updateModelVisibility();
+        });
+        
+        document.getElementById('model-bvm').addEventListener('change', (e) => {
+            this.enabledModels.bvm = e.target.checked;
+            this.updateModelVisibility();
+        });
+        
+        document.getElementById('model-vval18').addEventListener('change', (e) => {
+            this.enabledModels.vval18 = e.target.checked;
+            this.updateModelVisibility();
+        });
     }
     
     setZoomMode(mode) {
@@ -248,6 +276,95 @@ class DiveSimulator {
         }
         
         return { history: this.diveHistory, startIndex: 0 };
+    }
+    
+    updateModelVisibility() {
+        // Update decompression status display visibility
+        Object.keys(this.enabledModels).forEach(modelName => {
+            const resultElement = document.getElementById(`${modelName}-result`);
+            if (resultElement) {
+                resultElement.style.display = this.enabledModels[modelName] ? 'block' : 'none';
+            }
+            
+            // Update decompression schedule display visibility
+            const scheduleElement = document.getElementById(`${modelName}-schedule`);
+            if (scheduleElement && scheduleElement.parentElement && scheduleElement.parentElement.classList.contains('schedule-column')) {
+                scheduleElement.parentElement.style.display = this.enabledModels[modelName] ? 'block' : 'none';
+            }
+        });
+        
+        // Update detailed tissue model selector
+        this.updateDetailedModelSelector();
+        
+        // Update charts to reflect enabled models
+        this.updateCharts();
+    }
+    
+    updateDetailedModelSelector() {
+        const select = document.getElementById('detailed-model-select');
+        if (!select) return;
+        
+        // Get currently selected value
+        const currentValue = select.value;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add options only for enabled models
+        const modelNames = {
+            buhlmann: 'Bühlmann ZH-L16C',
+            vpmb: 'VPM-B',
+            bvm: 'BVM(3)',
+            vval18: 'VVal-18 Thalmann'
+        };
+        
+        let foundValidOption = false;
+        Object.keys(this.enabledModels).forEach(modelName => {
+            if (this.enabledModels[modelName]) {
+                const option = document.createElement('option');
+                option.value = modelName;
+                option.textContent = modelNames[modelName];
+                select.appendChild(option);
+                
+                if (modelName === currentValue) {
+                    foundValidOption = true;
+                    select.value = currentValue;
+                }
+            }
+        });
+        
+        // If current selection is no longer valid, select the first enabled model
+        if (!foundValidOption && select.options.length > 0) {
+            select.value = select.options[0].value;
+            this.selectedDetailedModel = select.value;
+        }
+        
+        // If no models are enabled, disable the selector
+        if (select.options.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No models enabled';
+            option.disabled = true;
+            select.appendChild(option);
+            select.value = '';
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+        }
+    }
+    
+    syncCheckboxStates() {
+        // Read actual checkbox states and sync with enabledModels object
+        // This is important for page refreshes where browsers might remember checkbox states
+        Object.keys(this.enabledModels).forEach(modelName => {
+            const checkbox = document.getElementById(`model-${modelName}`);
+            if (checkbox) {
+                this.enabledModels[modelName] = checkbox.checked;
+            }
+        });
+        
+        // Apply the synced state to UI elements
+        this.updateModelVisibility();
     }
     
     initializeCharts() {
@@ -337,7 +454,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -430,7 +552,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -523,7 +650,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     }
                 },
@@ -694,7 +826,12 @@ class DiveSimulator {
                     },
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            filter: (legendItem, chartData) => {
+                                // Hide legend items for disabled datasets
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return !dataset.hidden;
+                            }
                         }
                     },
                     tooltip: {
@@ -1186,8 +1323,9 @@ class DiveSimulator {
         document.getElementById('depth-display').textContent = this.currentDepth;
         document.getElementById('time-display').textContent = window.DecompressionSimulator.formatTimeHHMM(this.diveTime);
         
-        // Update model results
+        // Update model results (only for enabled models)
         Object.entries(this.models).forEach(([name, model]) => {
+            if (!this.enabledModels[name]) return; // Skip disabled models
             const ceiling = model.calculateCeiling();
             const stops = model.calculateDecompressionStops();
             const canAscend = model.canAscendDirectly();
@@ -1242,7 +1380,10 @@ class DiveSimulator {
         const timeLabels = zoomedHistory.map(h => Math.round(h.time * 10) / 10); // Round to 1 decimal
         this.tissueChart.data.labels = timeLabels;
         
-        // Bühlmann fast tissues (average of first 4 compartments)
+        // Update dataset visibility and data based on enabled models
+        
+        // Bühlmann fast tissues (average of first 4 compartments) - Dataset 0
+        this.tissueChart.data.datasets[0].hidden = !this.enabledModels.buhlmann;
         this.tissueChart.data.datasets[0].data = zoomedHistory.map(h => {
             if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
             const loadings = h.models.buhlmann.tissueLoadings;
@@ -1251,7 +1392,8 @@ class DiveSimulator {
             return fastAvg;
         });
         
-        // Bühlmann slow tissues (average of last 4 compartments)
+        // Bühlmann slow tissues (average of last 4 compartments) - Dataset 1
+        this.tissueChart.data.datasets[1].hidden = !this.enabledModels.buhlmann;
         this.tissueChart.data.datasets[1].data = zoomedHistory.map(h => {
             if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
             const loadings = h.models.buhlmann.tissueLoadings;
@@ -1260,7 +1402,8 @@ class DiveSimulator {
             return slowAvg;
         });
         
-        // VPM-B fast tissues (average of first 4 compartments)
+        // VPM-B fast tissues (average of first 4 compartments) - Dataset 2
+        this.tissueChart.data.datasets[2].hidden = !this.enabledModels.vpmb;
         this.tissueChart.data.datasets[2].data = zoomedHistory.map(h => {
             if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
             const loadings = h.models.vpmb.tissueLoadings;
@@ -1269,7 +1412,8 @@ class DiveSimulator {
             return fastAvg;
         });
         
-        // VPM-B slow tissues (average of last 4 compartments)
+        // VPM-B slow tissues (average of last 4 compartments) - Dataset 3
+        this.tissueChart.data.datasets[3].hidden = !this.enabledModels.vpmb;
         this.tissueChart.data.datasets[3].data = zoomedHistory.map(h => {
             if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
             const loadings = h.models.vpmb.tissueLoadings;
@@ -1278,7 +1422,8 @@ class DiveSimulator {
             return slowAvg;
         });
         
-        // BVM fast tissues (compartment 1 - Fast: 12.5 min)
+        // BVM fast tissues (compartment 1 - Fast: 12.5 min) - Dataset 4
+        this.tissueChart.data.datasets[4].hidden = !this.enabledModels.bvm;
         this.tissueChart.data.datasets[4].data = zoomedHistory.map(h => {
             if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[0]) {
                 return 1.013;
@@ -1286,7 +1431,8 @@ class DiveSimulator {
             return h.models.bvm.tissueLoadings[0];
         });
         
-        // BVM slow tissues (compartment 3 - Slow: 423 min)
+        // BVM slow tissues (compartment 3 - Slow: 423 min) - Dataset 5
+        this.tissueChart.data.datasets[5].hidden = !this.enabledModels.bvm;
         this.tissueChart.data.datasets[5].data = zoomedHistory.map(h => {
             if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[2]) {
                 return 1.013;
@@ -1294,7 +1440,8 @@ class DiveSimulator {
             return h.models.bvm.tissueLoadings[2];
         });
         
-        // VVal-18 fast tissues (compartment 1 - Fast: 5 min)
+        // VVal-18 fast tissues (compartment 1 - Fast: 5 min) - Dataset 6
+        this.tissueChart.data.datasets[6].hidden = !this.enabledModels.vval18;
         this.tissueChart.data.datasets[6].data = zoomedHistory.map(h => {
             if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[0]) {
                 return 1.013;
@@ -1302,7 +1449,8 @@ class DiveSimulator {
             return h.models.vval18.tissueLoadings[0];
         });
         
-        // VVal-18 slow tissues (compartment 3 - Slow: 240 min)
+        // VVal-18 slow tissues (compartment 3 - Slow: 240 min) - Dataset 7
+        this.tissueChart.data.datasets[7].hidden = !this.enabledModels.vval18;
         this.tissueChart.data.datasets[7].data = zoomedHistory.map(h => {
             if (!h.models.vval18 || !h.models.vval18.tissueLoadings || !h.models.vval18.tissueLoadings[2]) {
                 return 1.013;
@@ -1313,52 +1461,68 @@ class DiveSimulator {
         // Ambient pressure overlay
         this.tissueChart.data.datasets[8].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
-        this.tissueChart.update('none');
+        this.tissueChart.update('default');
         
         // Update dive profile chart
         this.profileChart.data.labels = timeLabels;
-        this.profileChart.data.datasets[0].data = zoomedHistory.map(h => h.depth);
+        this.profileChart.data.datasets[0].data = zoomedHistory.map(h => h.depth); // Depth profile always visible
+        
+        // Bühlmann ceiling - Dataset 1
+        this.profileChart.data.datasets[1].hidden = !this.enabledModels.buhlmann;
         this.profileChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.buhlmann ? h.models.buhlmann.ceiling : 0
         );
+        
+        // VPM-B ceiling - Dataset 2
+        this.profileChart.data.datasets[2].hidden = !this.enabledModels.vpmb;
         this.profileChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.vpmb ? h.models.vpmb.ceiling : 0
         );
+        
+        // BVM ceiling - Dataset 3
+        this.profileChart.data.datasets[3].hidden = !this.enabledModels.bvm;
         this.profileChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.bvm ? h.models.bvm.ceiling : 0
         );
+        
+        // VVal-18 ceiling - Dataset 4
+        this.profileChart.data.datasets[4].hidden = !this.enabledModels.vval18;
         this.profileChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
-        this.profileChart.update('none');
+        this.profileChart.update('default');
         
         // Update DCS risk chart using model-specific calculations
         this.riskChart.data.labels = timeLabels;
         
-        // Bühlmann risk over time
+        // Bühlmann risk over time - Dataset 0
+        this.riskChart.data.datasets[0].hidden = !this.enabledModels.buhlmann;
         this.riskChart.data.datasets[0].data = zoomedHistory.map(h => 
             h.models.buhlmann ? h.models.buhlmann.risk : 0
         );
         
-        // VPM-B risk over time
+        // VPM-B risk over time - Dataset 1
+        this.riskChart.data.datasets[1].hidden = !this.enabledModels.vpmb;
         this.riskChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.vpmb ? h.models.vpmb.risk : 0
         );
         
-        // BVM(3) risk over time
+        // BVM(3) risk over time - Dataset 2
+        this.riskChart.data.datasets[2].hidden = !this.enabledModels.bvm;
         this.riskChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.bvm ? h.models.bvm.risk : 0
         );
         
-        // VVal-18 risk over time
+        // VVal-18 risk over time - Dataset 3
+        this.riskChart.data.datasets[3].hidden = !this.enabledModels.vval18;
         this.riskChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
-        // Dive profile overlay
+        // Dive profile overlay - Dataset 4 (always visible)
         this.riskChart.data.datasets[4].data = zoomedHistory.map(h => h.depth);
         
-        this.riskChart.update('none');
+        this.riskChart.update('default');
         
         // Update detailed tissue chart
         this.updateDetailedTissueChart();
@@ -1366,30 +1530,34 @@ class DiveSimulator {
         // Update bubble parameters chart
         this.bubbleChart.data.labels = timeLabels;
         
-        // VPM-B Bubble Count (Compartment 1)
+        // VPM-B Bubble Count (Compartment 1) - Dataset 0
+        this.bubbleChart.data.datasets[0].hidden = !this.enabledModels.vpmb;
         this.bubbleChart.data.datasets[0].data = zoomedHistory.map(h => 
             h.models.vpmb && h.models.vpmb.bubbleCount !== undefined ? h.models.vpmb.bubbleCount : 0
         );
         
-        // VPM-B Critical Radius (nanometers)
+        // VPM-B Critical Radius (nanometers) - Dataset 1
+        this.bubbleChart.data.datasets[1].hidden = !this.enabledModels.vpmb;
         this.bubbleChart.data.datasets[1].data = zoomedHistory.map(h => 
             h.models.vpmb && h.models.vpmb.criticalRadius !== undefined ? h.models.vpmb.criticalRadius : 1000
         );
         
-        // BVM(3) Bubble Volume (Compartment 1)
+        // BVM(3) Bubble Volume (Compartment 1) - Dataset 2
+        this.bubbleChart.data.datasets[2].hidden = !this.enabledModels.bvm;
         this.bubbleChart.data.datasets[2].data = zoomedHistory.map(h => 
             h.models.bvm && h.models.bvm.bubbleVolume !== undefined ? h.models.bvm.bubbleVolume : 0
         );
         
-        // BVM(3) Formation Rate
+        // BVM(3) Formation Rate - Dataset 3
+        this.bubbleChart.data.datasets[3].hidden = !this.enabledModels.bvm;
         this.bubbleChart.data.datasets[3].data = zoomedHistory.map(h => 
             h.models.bvm && h.models.bvm.bubbleFormationRate !== undefined ? h.models.bvm.bubbleFormationRate : 0
         );
         
-        // Dive profile overlay
+        // Dive profile overlay - Dataset 4 (always visible)
         this.bubbleChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
         
-        this.bubbleChart.update('none');
+        this.bubbleChart.update('default');
         
         console.log(`Updated charts with ${zoomedHistory.length} data points (zoom mode: ${this.zoomMode})`);
     }
@@ -1410,6 +1578,15 @@ class DiveSimulator {
         this.detailedTissueChart.data.labels = timeLabels;
         
         const selectedModel = this.selectedDetailedModel;
+        
+        // Check if the selected model is enabled
+        if (!this.enabledModels[selectedModel]) {
+            // Clear the chart if the selected model is disabled
+            this.detailedTissueChart.data.datasets = [];
+            this.detailedTissueChart.options.plugins.title.text = `Detailed Tissue Loading - Model Disabled`;
+            this.detailedTissueChart.update('default');
+            return;
+        }
         
         // Determine the number of compartments for the selected model
         let compartmentCount = 0;
@@ -1476,7 +1653,7 @@ class DiveSimulator {
         // Color compartments showing supersaturation differently
         this.updateCompartmentSupersaturationColors(compartmentCount);
         
-        this.detailedTissueChart.update('none');
+        this.detailedTissueChart.update('default');
     }
     
     updateCompartmentSupersaturationColors(compartmentCount) {
