@@ -159,6 +159,12 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   public updateTissueLoadings(timeStep: number): void {
+    // Ensure compartments are initialized
+    if (!this.tissueCompartments || this.tissueCompartments.length === 0 ||
+        !this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
+    }
+
     const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
     const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
 
@@ -279,7 +285,16 @@ export class BuhlmannModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
 
-    const compartment = this.buhlmannCompartments[compartmentNumber - 1]!;
+    // Ensure compartments are initialized
+    if (!this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
+    }
+
+    const compartment = this.buhlmannCompartments[compartmentNumber - 1];
+    if (!compartment) {
+      throw new Error(`Compartment ${compartmentNumber} not found. Available compartments: ${this.buhlmannCompartments.length}`);
+    }
+    
     const ambientPressure = this.calculateAmbientPressure(depth);
     
     return (compartment.combinedMValueA * ambientPressure) + compartment.combinedMValueB;
@@ -293,7 +308,6 @@ export class BuhlmannModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
 
-    const compartment = this.buhlmannCompartments[compartmentNumber - 1];
     const ambientPressure = this.calculateAmbientPressure(depth);
     const fullMValue = this.calculateMValue(compartmentNumber, depth);
     
@@ -301,7 +315,10 @@ export class BuhlmannModel extends DecompressionModel {
     const gradientFactor = this.getGradientFactorAtDepth(depth);
     
     // Apply gradient factor: M-value' = ambient + GF * (M-value - ambient)
-    return ambientPressure + (gradientFactor / 100) * (fullMValue - ambientPressure);
+    const result = ambientPressure + (gradientFactor / 100) * (fullMValue - ambientPressure);
+    
+    // Ensure GF M-value is not more permissive than full M-value
+    return Math.min(result, fullMValue);
   }
 
   /**
@@ -332,7 +349,16 @@ export class BuhlmannModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
 
-    const compartment = this.buhlmannCompartments[compartmentNumber - 1]!;
+    // Ensure compartments are initialized
+    if (!this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
+    }
+
+    const compartment = this.buhlmannCompartments[compartmentNumber - 1];
+    if (!compartment) {
+      throw new Error(`Compartment ${compartmentNumber} not found. Available compartments: ${this.buhlmannCompartments.length}`);
+    }
+    
     const mValue = this.calculateGradientFactorMValue(compartmentNumber, this.currentDiveState.depth);
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     
