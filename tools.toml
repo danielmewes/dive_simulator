@@ -1,3 +1,0 @@
-[[commands]]
-name="verify"
-action = { function = "verify", params = { disabled_identifiers = [] } }
