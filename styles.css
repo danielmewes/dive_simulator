@@ -508,6 +508,7 @@ button:hover {
 .chart-container {
     height: 400px;
     position: relative;
+    flex: 1;
 }
 
 .chart {
@@ -526,15 +527,24 @@ button:hover {
     visibility: visible;
 }
 
+/* Charts Area with Side Controls */
+.charts-area {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
 /* Zoom Controls */
 .zoom-controls {
-    margin-bottom: 1rem;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    min-width: 140px;
+    flex-shrink: 0;
 }
 
 .zoom-buttons {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
 }
 
