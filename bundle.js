@@ -390,6 +390,19 @@
         canAscendDirectly() {
             return this.calculateCeiling() <= 0;
         }
+        
+        calculateTotalDcsRisk() {
+            // Simplified BVM(3) DCS risk calculation based on bubble volumes
+            let totalRisk = 0;
+            const riskWeights = [0.6, 0.3, 0.1]; // Fast, medium, slow compartment weights
+            
+            this.tissueCompartments.forEach((compartment, index) => {
+                const bubbleRisk = Math.max(0, compartment.bubbleVolume - 0.5) * 2; // Risk above threshold
+                totalRisk += bubbleRisk * riskWeights[index];
+            });
+            
+            return Math.min(10, totalRisk); // Cap at 10%
+        }
     }
     
     // === VVal-18 Thalmann Model ===

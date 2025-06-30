@@ -335,29 +335,54 @@ class DiveSimulator {
             }
         });
         
-        // DCS Risk Chart
+        // DCS Risk Chart (Timeseries with Dive Profile Overlay)
         const riskCtx = document.getElementById('dcs-risk-chart').getContext('2d');
         this.riskChart = new Chart(riskCtx, {
-            type: 'bar',
+            type: 'line',
             data: {
-                labels: ['Bühlmann', 'VPM-B', 'BVM(3)', 'VVal-18'],
+                labels: [],
                 datasets: [
                     {
-                        label: 'DCS Risk (%)',
-                        data: [0, 0, 0, 0],
-                        backgroundColor: [
-                            'rgba(96, 165, 250, 0.8)',
-                            'rgba(52, 211, 153, 0.8)',
-                            'rgba(245, 158, 11, 0.8)',
-                            'rgba(239, 68, 68, 0.8)'
-                        ],
-                        borderColor: [
-                            '#60a5fa',
-                            '#34d399',
-                            '#f59e0b',
-                            '#ef4444'
-                        ],
-                        borderWidth: 2
+                        label: 'Bühlmann Risk (%)',
+                        data: [],
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'VPM-B Risk (%)',
+                        data: [],
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'BVM(3) Risk (%)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'VVal-18 Risk (%)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'risk'
+                    },
+                    {
+                        label: 'Dive Profile',
+                        data: [],
+                        borderColor: '#94a3b8',
+                        backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                        fill: true,
+                        tension: 0.2,
+                        yAxisID: 'depth',
+                        borderDash: [2, 2]
                     }
                 ]
             },
@@ -367,7 +392,7 @@ class DiveSimulator {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'DCS Risk Comparison',
+                        text: 'DCS Risk Over Time with Dive Profile',
                         color: '#e2e8f0'
                     },
                     legend: {
@@ -378,19 +403,39 @@ class DiveSimulator {
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#e2e8f0' },
-                        grid: { color: 'rgba(226, 232, 240, 0.1)' }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        max: 10,
                         title: {
                             display: true,
-                            text: 'Risk (%)',
+                            text: 'Time (minutes)',
                             color: '#e2e8f0'
                         },
                         ticks: { color: '#e2e8f0' },
                         grid: { color: 'rgba(226, 232, 240, 0.1)' }
+                    },
+                    risk: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        max: 10,
+                        title: {
+                            display: true,
+                            text: 'DCS Risk (%)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: 'rgba(226, 232, 240, 0.1)' }
+                    },
+                    depth: {
+                        type: 'linear',
+                        position: 'right',
+                        reverse: true, // Depth increases downward
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Depth (m)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { display: false } // Hide grid for depth to avoid overlap
                     }
                 }
             }
@@ -519,7 +564,8 @@ class DiveSimulator {
         this.profileChart.data.datasets.forEach(dataset => dataset.data = []);
         this.profileChart.update();
         
-        this.riskChart.data.datasets[0].data = [0, 0, 0, 0];
+        this.riskChart.data.labels = [];
+        this.riskChart.data.datasets.forEach(dataset => dataset.data = []);
         this.riskChart.update();
         
         this.updateDisplay();
@@ -574,7 +620,8 @@ class DiveSimulator {
                     tissueLoadings: compartments.map(t => 
                         (t.nitrogenLoading || 0) + (t.heliumLoading || 0)
                     ),
-                    canAscend: model.canAscendDirectly()
+                    canAscend: model.canAscendDirectly(),
+                    risk: this.calculateDCSRisk(name)
                 };
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
@@ -582,7 +629,8 @@ class DiveSimulator {
                 historyPoint.models[name] = {
                     ceiling: 0,
                     tissueLoadings: new Array(16).fill(1.013), // Default surface pressure
-                    canAscend: true
+                    canAscend: true,
+                    risk: 0
                 };
             }
         });
@@ -708,15 +756,32 @@ class DiveSimulator {
         );
         this.profileChart.update('none');
         
-        // Update DCS risk chart
-        const currentRisks = [
-            this.calculateDCSRisk('buhlmann'),
-            this.calculateDCSRisk('vpmb'),
-            this.calculateDCSRisk('bvm'),
-            this.calculateDCSRisk('vval18')
-        ];
+        // Update DCS risk chart (timeseries)
+        this.riskChart.data.labels = timeLabels;
         
-        this.riskChart.data.datasets[0].data = currentRisks;
+        // Bühlmann risk over time
+        this.riskChart.data.datasets[0].data = this.diveHistory.map(h => 
+            h.models.buhlmann ? h.models.buhlmann.risk : 0
+        );
+        
+        // VPM-B risk over time
+        this.riskChart.data.datasets[1].data = this.diveHistory.map(h => 
+            h.models.vpmb ? h.models.vpmb.risk : 0
+        );
+        
+        // BVM(3) risk over time
+        this.riskChart.data.datasets[2].data = this.diveHistory.map(h => 
+            h.models.bvm ? h.models.bvm.risk : 0
+        );
+        
+        // VVal-18 risk over time
+        this.riskChart.data.datasets[3].data = this.diveHistory.map(h => 
+            h.models.vval18 ? h.models.vval18.risk : 0
+        );
+        
+        // Dive profile overlay
+        this.riskChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
+        
         this.riskChart.update('none');
         
         console.log(`Updated charts with ${this.diveHistory.length} data points`);
@@ -726,20 +791,50 @@ class DiveSimulator {
         const model = this.models[modelName];
         if (!model) return 0;
         
-        // Simplified DCS risk calculation based on tissue supersaturation
-        const compartments = model.getTissueCompartments();
-        let totalSupersaturation = 0;
-        
-        compartments.forEach(compartment => {
-            const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
-            const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
-            const supersaturation = Math.max(0, totalInert - ambientPressure);
-            totalSupersaturation += supersaturation;
-        });
-        
-        // Convert to percentage (simplified formula)
-        const risk = Math.min(10, totalSupersaturation * 2);
-        return Math.round(risk * 10) / 10; // Round to 1 decimal place
+        try {
+            // Use model-specific risk calculations when available
+            if (modelName === 'bvm' && typeof model.calculateTotalDcsRisk === 'function') {
+                // BVM(3) has a sophisticated bubble volume based risk calculation
+                return Math.round(model.calculateTotalDcsRisk() * 10) / 10;
+            }
+            
+            if (modelName === 'vval18') {
+                // VVal-18 uses 3.5% Navy standard - calculate based on supersaturation relative to this
+                const compartments = model.getTissueCompartments();
+                let maxSupersaturationRatio = 0;
+                
+                compartments.forEach(compartment => {
+                    const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
+                    const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
+                    const supersaturation = Math.max(0, totalInert - ambientPressure);
+                    // Normalize to VVal-18's 3.5% standard
+                    const ratio = supersaturation / 3.5;
+                    maxSupersaturationRatio = Math.max(maxSupersaturationRatio, ratio);
+                });
+                
+                const risk = Math.min(10, maxSupersaturationRatio * 3.5);
+                return Math.round(risk * 10) / 10;
+            }
+            
+            // Default calculation for Bühlmann and VPM-B models
+            const compartments = model.getTissueCompartments();
+            let totalSupersaturation = 0;
+            
+            compartments.forEach(compartment => {
+                const totalInert = compartment.nitrogenLoading + (compartment.heliumLoading || 0);
+                const ambientPressure = window.DecompressionSimulator.depthToPressure(this.currentDepth);
+                const supersaturation = Math.max(0, totalInert - ambientPressure);
+                totalSupersaturation += supersaturation;
+            });
+            
+            // Convert to percentage (simplified formula)
+            const risk = Math.min(10, totalSupersaturation * 2);
+            return Math.round(risk * 10) / 10; // Round to 1 decimal place
+            
+        } catch (error) {
+            console.warn(`Error calculating DCS risk for ${modelName}:`, error);
+            return 0;
+        }
     }
 }
 
