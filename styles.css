@@ -215,6 +215,9 @@ header h1 {
     border-radius: 6px;
     color: #e2e8f0;
     font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .gas-input input:read-only {
@@ -544,6 +547,11 @@ button:hover {
     .control-panel {
         padding: 1rem;
     }
+    
+    .gas-controls {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
 }
 
 @media (max-width: 900px) {
@@ -555,6 +563,11 @@ button:hover {
     .control-panel {
         position: static;
         max-height: none;
+    }
+    
+    .gas-controls {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
     
     .status-grid {
@@ -588,10 +601,6 @@ button:hover {
     }
     
     .schedule-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .gas-controls {
         grid-template-columns: 1fr;
     }
     
