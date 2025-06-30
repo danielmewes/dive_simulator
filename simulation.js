@@ -11,6 +11,7 @@ class DiveSimulator {
         this.timeSpeed = 1; // Speed multiplier
         this.diveHistory = [];
         this.intervalId = null;
+        this.lastHistoryTime = 0; // Track when we last recorded history
         
         // Chart instances
         this.tissueChart = null;
@@ -26,6 +27,11 @@ class DiveSimulator {
         this.initializeEventListeners();
         this.initializeCharts();
         this.updateDisplay();
+        
+        // Record initial data point
+        this.recordDiveHistory();
+        this.updateCharts();
+        
         this.startSimulation();
     }
     
@@ -378,7 +384,15 @@ class DiveSimulator {
             });
         });
         
+        // Record history immediately when depth changes significantly
+        const timeSinceLastHistory = this.diveTime - this.lastHistoryTime;
+        if (timeSinceLastHistory >= 0.1) { // Record more frequently on depth changes
+            this.recordDiveHistory();
+            this.lastHistoryTime = this.diveTime;
+        }
+        
         this.updateDisplay();
+        this.updateCharts();
     }
     
     switchGas(oxygen, helium) {
@@ -414,6 +428,7 @@ class DiveSimulator {
         this.currentDepth = 0;
         this.diveTime = 0;
         this.diveHistory = [];
+        this.lastHistoryTime = 0;
         
         // Reset all models
         Object.values(this.models).forEach(model => {
@@ -436,7 +451,17 @@ class DiveSimulator {
         this.profileChart.data.datasets.forEach(dataset => dataset.data = []);
         this.profileChart.update();
         
+        this.riskChart.data.datasets[0].data = [0, 0, 0, 0];
+        this.riskChart.update();
+        
         this.updateDisplay();
+        
+        // Record initial data point after reset
+        setTimeout(() => {
+            this.recordDiveHistory();
+            this.updateCharts();
+        }, 100);
+        
         this.startSimulation();
     }
     
@@ -453,9 +478,12 @@ class DiveSimulator {
             model.updateDiveState({ time: this.diveTime });
         });
         
-        // Record history for charts (sample every 30 seconds at 1x speed)
-        if (Math.floor(this.diveTime * 60) % 30 === 0) {
+        // Record history for charts at regular intervals
+        // Sample every 30 seconds of dive time (0.5 minutes)
+        const timeSinceLastHistory = this.diveTime - this.lastHistoryTime;
+        if (timeSinceLastHistory >= 0.5) {
             this.recordDiveHistory();
+            this.lastHistoryTime = this.diveTime;
         }
         
         this.updateDisplay();
@@ -471,13 +499,24 @@ class DiveSimulator {
         };
         
         Object.entries(this.models).forEach(([name, model]) => {
-            historyPoint.models[name] = {
-                ceiling: model.calculateCeiling(),
-                tissueLoadings: model.getTissueCompartments().map(t => 
-                    t.nitrogenLoading + (t.heliumLoading || 0)
-                ),
-                canAscend: model.canAscendDirectly()
-            };
+            try {
+                const compartments = model.getTissueCompartments();
+                historyPoint.models[name] = {
+                    ceiling: model.calculateCeiling(),
+                    tissueLoadings: compartments.map(t => 
+                        (t.nitrogenLoading || 0) + (t.heliumLoading || 0)
+                    ),
+                    canAscend: model.canAscendDirectly()
+                };
+            } catch (error) {
+                console.warn(`Error recording history for model ${name}:`, error);
+                // Provide default values
+                historyPoint.models[name] = {
+                    ceiling: 0,
+                    tissueLoadings: new Array(16).fill(1.013), // Default surface pressure
+                    canAscend: true
+                };
+            }
         });
         
         this.diveHistory.push(historyPoint);
@@ -486,6 +525,8 @@ class DiveSimulator {
         if (this.diveHistory.length > 100) {
             this.diveHistory.shift();
         }
+        
+        console.log(`Recorded dive history point at ${this.diveTime.toFixed(1)} min, depth ${this.currentDepth}m, total points: ${this.diveHistory.length}`);
     }
     
     updateDisplay() {
@@ -536,36 +577,48 @@ class DiveSimulator {
     }
     
     updateCharts() {
-        if (this.diveHistory.length < 2) return;
+        if (this.diveHistory.length === 0) {
+            console.log('No dive history available for charts');
+            return;
+        }
         
         // Update tissue loading chart
-        const timeLabels = this.diveHistory.map(h => Math.round(h.time));
+        const timeLabels = this.diveHistory.map(h => Math.round(h.time * 10) / 10); // Round to 1 decimal
         this.tissueChart.data.labels = timeLabels;
         
         // Bühlmann fast tissues (average of first 4 compartments)
         this.tissueChart.data.datasets[0].data = this.diveHistory.map(h => {
-            const fastAvg = h.models.buhlmann.tissueLoadings.slice(0, 4)
-                .reduce((sum, load) => sum + load, 0) / 4;
+            if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
+            const loadings = h.models.buhlmann.tissueLoadings;
+            const fastAvg = loadings.slice(0, 4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
             return fastAvg;
         });
         
         // Bühlmann slow tissues (average of last 4 compartments)
         this.tissueChart.data.datasets[1].data = this.diveHistory.map(h => {
-            const slowAvg = h.models.buhlmann.tissueLoadings.slice(-4)
-                .reduce((sum, load) => sum + load, 0) / 4;
+            if (!h.models.buhlmann || !h.models.buhlmann.tissueLoadings) return 1.013;
+            const loadings = h.models.buhlmann.tissueLoadings;
+            const slowAvg = loadings.slice(-4)
+                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
             return slowAvg;
         });
         
         // VPM-B average (all compartments)
         this.tissueChart.data.datasets[2].data = this.diveHistory.map(h => {
-            const avg = h.models.vpmb.tissueLoadings
-                .reduce((sum, load) => sum + load, 0) / h.models.vpmb.tissueLoadings.length;
+            if (!h.models.vpmb || !h.models.vpmb.tissueLoadings) return 1.013;
+            const loadings = h.models.vpmb.tissueLoadings;
+            const avg = loadings
+                .reduce((sum, load) => sum + (load || 1.013), 0) / loadings.length;
             return avg;
         });
         
         // BVM fast compartment
         this.tissueChart.data.datasets[3].data = this.diveHistory.map(h => {
-            return h.models.bvm.tissueLoadings[0] || 0;
+            if (!h.models.bvm || !h.models.bvm.tissueLoadings || !h.models.bvm.tissueLoadings[0]) {
+                return 1.013;
+            }
+            return h.models.bvm.tissueLoadings[0];
         });
         
         this.tissueChart.update('none');
@@ -573,8 +626,12 @@ class DiveSimulator {
         // Update dive profile chart
         this.profileChart.data.labels = timeLabels;
         this.profileChart.data.datasets[0].data = this.diveHistory.map(h => h.depth);
-        this.profileChart.data.datasets[1].data = this.diveHistory.map(h => h.models.buhlmann.ceiling);
-        this.profileChart.data.datasets[2].data = this.diveHistory.map(h => h.models.vpmb.ceiling);
+        this.profileChart.data.datasets[1].data = this.diveHistory.map(h => 
+            h.models.buhlmann ? h.models.buhlmann.ceiling : 0
+        );
+        this.profileChart.data.datasets[2].data = this.diveHistory.map(h => 
+            h.models.vpmb ? h.models.vpmb.ceiling : 0
+        );
         this.profileChart.update('none');
         
         // Update DCS risk chart
@@ -587,6 +644,8 @@ class DiveSimulator {
         
         this.riskChart.data.datasets[0].data = currentRisks;
         this.riskChart.update('none');
+        
+        console.log(`Updated charts with ${this.diveHistory.length} data points`);
     }
     
     calculateDCSRisk(modelName) {
