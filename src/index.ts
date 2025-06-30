@@ -31,3 +31,4 @@ export { Nmri98Model } from './models/Nmri98Model';
 export { runVpmBDemo } from './examples/vpmb-demo';
 export { runBuhlmannDemo } from './examples/buhlmann-demo';
 export { runVVal18Demo } from './examples/vval18-demo';
+export { runNmri98Demo } from './examples/nmri98-demo';
