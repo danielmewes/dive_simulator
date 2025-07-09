@@ -903,7 +903,6 @@ class DiveSimulator {
                         type: 'linear',
                         position: 'left',
                         beginAtZero: true,
-                        max: 10,
                         title: {
                             display: true,
                             text: 'DCS Risk (%)',
@@ -2276,6 +2275,27 @@ class DiveSimulator {
         
         // Dive profile overlay - Dataset 8 (always visible)
         this.riskChart.data.datasets[8].data = zoomedHistory.map(h => h.depth);
+        
+        // Calculate maximum risk value from all enabled models to dynamically adjust y-axis
+        let maxRisk = 10; // Default minimum of 10%
+        
+        // Check each enabled model's risk data
+        const riskDatasets = this.riskChart.data.datasets.slice(0, 8); // First 8 datasets are risk data
+        for (let i = 0; i < riskDatasets.length; i++) {
+            const dataset = riskDatasets[i];
+            if (!dataset.hidden && dataset.data.length > 0) {
+                const datasetMax = Math.max(...dataset.data);
+                if (datasetMax > maxRisk) {
+                    maxRisk = datasetMax;
+                }
+            }
+        }
+        
+        // Add a 10% buffer to the maximum risk for better visualization
+        maxRisk = Math.ceil(maxRisk * 1.1);
+        
+        // Update the chart's y-axis maximum
+        this.riskChart.options.scales.risk.max = maxRisk;
         
         this.riskChart.update('default');
         
