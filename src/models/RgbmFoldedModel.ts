@@ -479,8 +479,8 @@ export class RgbmFoldedModel extends DecompressionModel {
 
   private calculateStopTime(depth: number): number {
     const ceiling = this.calculateCeiling();
-    if (depth <= ceiling) {
-      return 0;
+    if (depth > ceiling) {
+      return 0; // No stop needed at this depth - it's above the ceiling
     }
 
     // RGBM-specific stop time calculation including bubble consideration

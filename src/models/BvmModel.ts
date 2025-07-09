@@ -396,8 +396,8 @@ export class BvmModel extends DecompressionModel {
   private calculateStopTime(depth: number): number {
     // BVM(3) stop time calculation based on bubble resolution and risk threshold
     const ceiling = this.calculateCeiling();
-    if (depth <= ceiling) {
-      return 0; // No stop needed at this depth
+    if (depth > ceiling) {
+      return 0; // No stop needed at this depth - it's above the ceiling
     }
 
     // Calculate time needed for bubble volumes to reduce sufficiently to meet risk threshold

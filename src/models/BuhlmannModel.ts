@@ -457,8 +457,8 @@ export class BuhlmannModel extends DecompressionModel {
     // to determine the time needed for tissues to off-gas sufficiently
     
     const ceiling = this.calculateCeiling();
-    if (depth <= ceiling) {
-      return 0; // No stop needed at this depth
+    if (depth > ceiling) {
+      return 0; // No stop needed at this depth - it's above the ceiling
     }
 
     // Basic stop time estimation based on supersaturation
