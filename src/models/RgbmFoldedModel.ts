@@ -174,8 +174,8 @@ export class RgbmFoldedModel extends DecompressionModel {
   }
 
   public updateTissueLoadings(timeStep: number): void {
-    const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen, this.currentDiveState.ambientPressure);
-    const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium, this.currentDiveState.ambientPressure);
+    const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
+    const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
 
     // Track maximum depth reached
     this.maxDepthReached = Math.max(this.maxDepthReached, this.currentDiveState.depth);
