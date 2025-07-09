@@ -302,6 +302,11 @@ export class HillsModel extends DecompressionModel {
       throw new Error('Compartment number must be between 1 and 16');
     }
     
+    // Check if compartments are initialized - if not, initialize them
+    if (this.hillsCompartments.length === 0) {
+      this.initializeTissueCompartments();
+    }
+    
     const compartment = this.hillsCompartments[compartmentNumber - 1];
     if (!compartment) {
       throw new Error(`Compartment ${compartmentNumber} not found`);

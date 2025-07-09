@@ -73,6 +73,22 @@ describe('HillsModel', () => {
         });
     });
 
+    describe('Hills-Specific Methods', () => {
+        test('should get Hills compartment data', () => {
+            const compartmentData = model.getHillsCompartmentData(1);
+            expect(compartmentData).toBeDefined();
+            expect(compartmentData.number).toBe(1);
+            expect(compartmentData.tissueTemperature).toBe(37.0);
+            expect(compartmentData.thermalDiffusivity).toBe(1.5e-7);
+            expect(compartmentData.heatCapacity).toBe(3800);
+        });
+
+        test('should throw error for invalid compartment number', () => {
+            expect(() => model.getHillsCompartmentData(0)).toThrow('Compartment number must be between 1 and 16');
+            expect(() => model.getHillsCompartmentData(17)).toThrow('Compartment number must be between 1 and 16');
+        });
+    });
+
     describe('Thermodynamic Calculations', () => {
         test('should calculate ceiling at surface', () => {
             const ceiling = model.calculateCeiling();
