@@ -13,7 +13,7 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 ## 📊 Interactive Features
 
 ### Real-Time Dive Controls
-- **Depth Control**: Interactive slider + quick descent/ascent buttons (0-60m)
+- **Depth Control**: Interactive slider + quick descent/ascent buttons (0-200m)
 - **Time Acceleration**: 1x, 5x, 10x, 60x speed multipliers for extended simulations
 - **Gas Switching**: Custom Trimix mixing with preset options (Air, EAN32, Trimix)
 - **Model Selection**: Toggle individual decompression models on/off
@@ -82,7 +82,7 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 ## 🎮 Controls Guide
 
 ### Depth Management
-- **Depth Slider**: Direct depth adjustment (0-60m)
+- **Depth Slider**: Direct depth adjustment (0-200m)
 - **⬇️ Fast Descent**: +5m quick descent button
 - **⬆️ Slow Ascent**: -3m controlled ascent button
 
