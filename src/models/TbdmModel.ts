@@ -394,21 +394,78 @@ export class TbdmModel extends DecompressionModel {
   private calculateCompartmentCeiling(compartment: TbdmCompartment): number {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     
-    // TBDM ceiling calculation considers both dissolved gas and bubble volume
-    let allowablePressure = compartment.bubbleNucleationThreshold;
+    // TBDM ceiling calculation uses bubble growth dynamics and DCS risk threshold
+    // Find the depth where bubble growth rate equals safe threshold
     
-    // Adjust for existing bubble volume
-    const bubbleAdjustment = compartment.bubbleVolumeFraction * 2.0; // Bubble volume penalty
-    allowablePressure -= bubbleAdjustment;
+    // Binary search to find ceiling depth based on bubble growth dynamics
+    let lowDepth = 0;
+    let highDepth = this.currentDiveState.depth;
+    const tolerance = 0.1; // 0.1 meter tolerance
+    const maxBubbleGrowthRate = 0.1; // Maximum safe bubble growth rate
     
-    // Apply conservatism factor
-    allowablePressure /= this.tbdmParameters.conservatismFactor;
+    while (highDepth - lowDepth > tolerance) {
+      const testDepth = (lowDepth + highDepth) / 2;
+      const testPressure = this.calculateAmbientPressure(testDepth);
+      
+      // Calculate bubble growth rate at this depth
+      const bubbleGrowthRate = this.calculateBubbleGrowthRate(compartment, testPressure);
+      
+      // Also consider DCS risk threshold
+      const dcsRisk = this.calculateCompartmentDCSRisk(compartment, testPressure);
+      
+      if (bubbleGrowthRate <= maxBubbleGrowthRate && dcsRisk <= 5.0) { // 5% DCS risk threshold
+        highDepth = testDepth; // Can go shallower
+      } else {
+        lowDepth = testDepth; // Must stay deeper
+      }
+    }
     
-    // Calculate ceiling depth
-    const ceilingPressure = totalLoading - allowablePressure;
-    const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+    return Math.max(0, highDepth);
+  }
+
+  /**
+   * Calculate bubble growth rate for TBDM ceiling calculation
+   */
+  private calculateBubbleGrowthRate(compartment: TbdmCompartment, ambientPressure: number): number {
+    const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+    const supersaturation = Math.max(0, totalLoading - ambientPressure);
     
-    return Math.max(0, ceilingDepth);
+    // TBDM bubble growth rate calculation based on supersaturation
+    if (supersaturation <= 0) {
+      return 0; // No bubble growth below saturation
+    }
+    
+    // Growth rate proportional to supersaturation and existing bubble volume
+    const currentBubbleVolume = compartment.bubbleVolumeFraction;
+    const growthRate = supersaturation * compartment.bubbleFormationCoefficient * (1 + currentBubbleVolume);
+    
+    return growthRate;
+  }
+
+  /**
+   * Calculate DCS risk for a compartment at a given ambient pressure (TBDM specific)
+   */
+  private calculateCompartmentDCSRisk(compartment: TbdmCompartment, ambientPressure: number): number {
+    const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+    const supersaturation = Math.max(0, (totalLoading - ambientPressure) / ambientPressure);
+    
+    // TBDM-specific risk calculation incorporating bubble dynamics
+    const nucleationRisk = supersaturation / compartment.bubbleNucleationThreshold;
+    const bubbleVolumeRisk = compartment.bubbleVolumeFraction / compartment.maxBubbleVolumeFraction;
+    
+    // Combined risk assessment
+    const tissueRisk = Math.max(nucleationRisk, bubbleVolumeRisk);
+    
+    // Temperature and metabolic adjustments
+    const temperatureAdjustment = 1.0 + ((this.tbdmParameters.bodyTemperature - 37.0) * 0.02);
+    const metabolicAdjustment = compartment.metabolicCoefficient;
+    
+    const adjustedRisk = tissueRisk * temperatureAdjustment * metabolicAdjustment;
+    
+    // Convert to percentage
+    const riskPercentage = Math.min(100, adjustedRisk * adjustedRisk * 45);
+    
+    return riskPercentage;
   }
 
   private calculateStopTime(depth: number): number {

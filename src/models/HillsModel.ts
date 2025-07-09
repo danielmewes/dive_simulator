@@ -41,6 +41,8 @@ interface HillsCompartment extends TissueCompartment {
   dissolutionEnthalpy: number;
   /** Current tissue temperature (°C) */
   tissueTemperature: number;
+  /** Metabolic coefficient for oxygen window calculation */
+  metabolicCoefficient: number;
 }
 
 interface ThermodynamicParameters {
@@ -166,6 +168,7 @@ export class HillsModel extends DecompressionModel {
         dissolutionRate: 1.0,
         dissolutionEnthalpy: 0.0,
         tissueTemperature: this.thermodynamicParams?.coreTemperature || 37.0,
+        metabolicCoefficient: 1.0 + (0.1 * Math.exp(-i * 0.2)), // Decreasing with compartment number
         get totalLoading() {
           return this.nitrogenLoading + this.heliumLoading;
         }
@@ -376,14 +379,18 @@ export class HillsModel extends DecompressionModel {
 
   private calculateThermodynamicCeiling(compartment: HillsCompartment): number {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
-    const ambientPressure = this.currentDiveState.ambientPressure;
     
-    // Calculate thermodynamic supersaturation limit
-    const thermalFactor = (compartment.tissueTemperature + 273.15) / (37.0 + 273.15);
-    const allowableSupersaturation = 1.6 * thermalFactor; // bar
+    // Hills thermodynamic model: Use oxygen window (partial pressure vacancy) approach
+    // The natural unsaturation in tissues due to metabolic reduction in oxygen partial pressure
+    // provides the buffer against bubble formation
+    const oxygenWindow = this.calculateOxygenWindow(compartment);
     
-    // Calculate ceiling depth
-    const maxAllowablePressure = totalLoading - allowableSupersaturation;
+    // The tissue may be safely decompressed provided that the reduction in ambient pressure
+    // does not exceed the oxygen window value
+    const allowableDecompression = oxygenWindow;
+    
+    // Calculate ceiling depth based on oxygen window limitation
+    const maxAllowablePressure = totalLoading - allowableDecompression;
     const ceilingDepth = (maxAllowablePressure - this.surfacePressure) / 0.1;
     
     return Math.max(0, ceilingDepth);
@@ -399,6 +406,30 @@ export class HillsModel extends DecompressionModel {
     const tempFactor = (37.0 + 273.15) / (compartment.tissueTemperature + 273.15);
     
     return supersaturation * tempFactor;
+  }
+
+  /**
+   * Calculate oxygen window (partial pressure vacancy) for Hills thermodynamic model
+   * This represents the natural unsaturation in tissues due to metabolic oxygen consumption
+   */
+  private calculateOxygenWindow(compartment: HillsCompartment): number {
+    // Oxygen metabolized is replaced by more soluble carbon dioxide
+    // Creating a partial pressure vacancy that provides decompression buffer
+    
+    // Base oxygen window at surface conditions (typically 0.3-0.5 bar)
+    const baseOxygenWindow = 0.4; // bar
+    
+    // Adjust for tissue perfusion and metabolic activity
+    const metabolicFactor = compartment.metabolicCoefficient || 1.0;
+    
+    // Adjust for temperature effects on metabolism
+    const tempFactor = (compartment.tissueTemperature + 273.15) / (37.0 + 273.15);
+    
+    // The oxygen window is reduced at depth due to increased oxygen partial pressure
+    const oxygenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.oxygen);
+    const depthAdjustment = Math.max(0.1, 1.0 - (oxygenPP - 0.21) * 0.5);
+    
+    return baseOxygenWindow * metabolicFactor * tempFactor * depthAdjustment;
   }
 
   private calculateBubbleNucleationProbability(compartment: HillsCompartment): number {

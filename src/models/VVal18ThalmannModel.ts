@@ -275,20 +275,62 @@ export class VVal18ThalmannModel extends DecompressionModel {
   }
 
   /**
-   * Calculate the decompression ceiling for a specific compartment
+   * Calculate the decompression ceiling for a specific compartment using DCS risk threshold
    */
   private calculateCompartmentCeiling(compartment: VVal18Compartment): number {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     
-    // Apply gradient factors for conservative decompression
-    const gradientFactor = this.interpolateGradientFactor();
-    const allowableGradient = compartment.mValue * gradientFactor * this.parameters.safetyFactor;
+    // VVal-18 model uses a 3.5% DCS risk threshold approach
+    // Calculate ceiling depth where DCS risk equals maximum allowable risk
+    const maxAllowableRisk = this.parameters.maxDcsRisk; // 3.5%
     
-    // Calculate ceiling pressure
-    const ceilingPressure = totalLoading - allowableGradient;
-    const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+    // Binary search to find depth where DCS risk equals threshold
+    let lowDepth = 0;
+    let highDepth = this.currentDiveState.depth;
+    const tolerance = 0.1; // 0.1 meter tolerance
+    
+    while (highDepth - lowDepth > tolerance) {
+      const testDepth = (lowDepth + highDepth) / 2;
+      const testPressure = this.calculateAmbientPressure(testDepth);
+      
+      // Calculate DCS risk at this depth
+      const dcsRisk = this.calculateCompartmentDCSRisk(compartment, testPressure);
+      
+      if (dcsRisk <= maxAllowableRisk) {
+        highDepth = testDepth; // Can go shallower
+      } else {
+        lowDepth = testDepth; // Must stay deeper
+      }
+    }
+    
+    return Math.max(0, highDepth);
+  }
 
-    return Math.max(0, ceilingDepth);
+  /**
+   * Calculate DCS risk for a compartment at a given ambient pressure
+   */
+  private calculateCompartmentDCSRisk(compartment: VVal18Compartment, ambientPressure: number): number {
+    const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+    const supersaturation = Math.max(0, (totalLoading - ambientPressure) / ambientPressure);
+    
+    // VVal-18 model uses linear-exponential kinetics with crossover pressure
+    // Risk calculation based on supersaturation above M-value
+    const mValue = compartment.mValue;
+    const maxAllowableLoading = ambientPressure + mValue;
+    
+    if (totalLoading <= maxAllowableLoading) {
+      return 0; // No DCS risk
+    }
+    
+    // Calculate risk based on exceedance over M-value
+    const exceedance = totalLoading - maxAllowableLoading;
+    const riskFactor = exceedance / mValue;
+    
+    // Convert to percentage using VVal-18 specific risk model
+    // This is a simplified approximation of the actual probabilistic model
+    const riskPercentage = Math.min(100, riskFactor * riskFactor * 20);
+    
+    return riskPercentage;
   }
 
   /**
