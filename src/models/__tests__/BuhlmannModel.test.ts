@@ -436,4 +436,79 @@ describe('BuhlmannModel', () => {
       });
     });
   });
+
+  describe('TTS (Time To Surface) Calculation', () => {
+    test('should calculate TTS correctly for surface dive', () => {
+      const tts = buhlmannModel.calculateTTS();
+      expect(tts).toBe(0); // No time needed if already at surface
+    });
+
+    test('should calculate TTS correctly for short dive', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Short dive at 18m for 10 minutes
+      buhlmannModel.updateDiveState({ depth: 18, gasMix: airMix });
+      buhlmannModel.updateTissueLoadings(10);
+
+      const stops = buhlmannModel.calculateDecompressionStops();
+      const tts = buhlmannModel.calculateTTS();
+      
+      if (stops.length === 0) {
+        // No decompression required, should be approximately 18m / 9m/min = 2 minutes
+        expect(tts).toBeCloseTo(2, 0);
+      } else {
+        // If decompression is required, TTS should be greater than just direct ascent time
+        expect(tts).toBeGreaterThan(2);
+        // Should include ascent time plus stop time
+        const stopTimesSum = stops.reduce((sum, stop) => sum + stop.time, 0);
+        expect(tts).toBeGreaterThan(stopTimesSum);
+      }
+    });
+
+    test('should calculate TTS correctly for deco dive', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Dive that requires decompression
+      buhlmannModel.updateDiveState({ depth: 30, gasMix: airMix });
+      buhlmannModel.updateTissueLoadings(30); // 30 minutes at 30m
+
+      const stops = buhlmannModel.calculateDecompressionStops();
+      const tts = buhlmannModel.calculateTTS();
+      
+      if (stops.length > 0) {
+        // TTS should be greater than just the sum of stop times
+        const stopTimesSum = stops.reduce((sum, stop) => sum + stop.time, 0);
+        expect(tts).toBeGreaterThan(stopTimesSum);
+        
+        // TTS should include ascent time from 30m (at least 30/9 = 3.33 minutes)
+        expect(tts).toBeGreaterThan(3);
+      }
+    });
+
+    test('should use custom ascent rate', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      buhlmannModel.updateDiveState({ depth: 27, gasMix: airMix });
+      
+      const tts9 = buhlmannModel.calculateTTS(9); // 9 m/min (default)
+      const tts18 = buhlmannModel.calculateTTS(18); // 18 m/min (faster)
+      
+      // Faster ascent rate should result in less time
+      expect(tts18).toBeLessThan(tts9);
+      expect(tts9).toBeCloseTo(3, 0); // 27m / 9m/min = 3 minutes
+      expect(tts18).toBeCloseTo(1.5, 0); // 27m / 18m/min = 1.5 minutes
+    });
+  });
 });

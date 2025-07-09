@@ -2080,8 +2080,8 @@ class DiveSimulator {
             const stops = model.calculateDecompressionStops();
             const canAscend = model.canAscendDirectly();
             
-            // Calculate total decompression time
-            const totalTime = stops.reduce((sum, stop) => sum + stop.time, 0);
+            // Calculate total time to surface (TTS) including ascent time
+            const totalTime = model.calculateTTS ? model.calculateTTS() : stops.reduce((sum, stop) => sum + stop.time, 0);
             
             // Update ceiling and TTS
             document.getElementById(`${name}-ceiling`).textContent = `${Math.round(ceiling)}m`;

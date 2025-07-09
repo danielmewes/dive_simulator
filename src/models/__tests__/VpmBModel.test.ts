@@ -268,4 +268,83 @@ describe('VpmBModel', () => {
       });
     });
   });
+
+  describe('TTS (Time To Surface) Calculation', () => {
+    test('should calculate TTS correctly for surface dive', () => {
+      const tts = vpmModel.calculateTTS();
+      expect(tts).toBe(0); // No time needed if already at surface
+    });
+
+    test('should calculate TTS correctly for short dive', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Short dive at 20m for 5 minutes
+      vpmModel.updateDiveState({ depth: 20, gasMix: airMix });
+      vpmModel.updateTissueLoadings(5);
+
+      const stops = vpmModel.calculateDecompressionStops();
+      const tts = vpmModel.calculateTTS();
+      
+      if (stops.length === 0) {
+        // No decompression required, should be approximately 20m / 9m/min = 2.22 minutes
+        expect(tts).toBeCloseTo(2.22, 1);
+      } else {
+        // If decompression is required, TTS should be greater than just direct ascent time
+        expect(tts).toBeGreaterThan(2.22);
+        // Should include ascent time plus stop time
+        const stopTimesSum = stops.reduce((sum, stop) => sum + stop.time, 0);
+        expect(tts).toBeGreaterThan(stopTimesSum);
+      }
+    });
+
+    test('should calculate TTS correctly for deco dive', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Dive that requires decompression
+      vpmModel.updateDiveState({ depth: 40, gasMix: airMix });
+      vpmModel.updateTissueLoadings(30); // 30 minutes at 40m
+
+      const stops = vpmModel.calculateDecompressionStops();
+      const tts = vpmModel.calculateTTS();
+      
+      if (stops.length > 0) {
+        // TTS should be greater than just the sum of stop times
+        const stopTimesSum = stops.reduce((sum, stop) => sum + stop.time, 0);
+        expect(tts).toBeGreaterThan(stopTimesSum);
+        
+        // TTS should include ascent time from 40m (at least 40/9 = 4.44 minutes)
+        expect(tts).toBeGreaterThan(4);
+      } else {
+        // If no stops, should just be ascent time
+        expect(tts).toBeGreaterThan(4);
+        expect(tts).toBeLessThan(5);
+      }
+    });
+
+    test('should use custom ascent rate', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      vpmModel.updateDiveState({ depth: 18, gasMix: airMix });
+      
+      const tts9 = vpmModel.calculateTTS(9); // 9 m/min (default)
+      const tts18 = vpmModel.calculateTTS(18); // 18 m/min (faster)
+      
+      // Faster ascent rate should result in less time
+      expect(tts18).toBeLessThan(tts9);
+      expect(tts9).toBeCloseTo(2, 0); // 18m / 9m/min = 2 minutes
+      expect(tts18).toBeCloseTo(1, 0); // 18m / 18m/min = 1 minute
+    });
+  });
 });

@@ -111,6 +111,49 @@ export abstract class DecompressionModel {
   public abstract calculateDCSRisk(): number;
 
   /**
+   * Calculate time to surface (TTS) including ascent time and decompression stops
+   * @param ascentRate Ascent rate in meters per minute (default: 9 m/min)
+   * @returns Total time to surface in minutes
+   */
+  public calculateTTS(ascentRate: number = 9): number {
+    const stops = this.calculateDecompressionStops();
+    const currentDepth = this.currentDiveState.depth;
+    
+    // If no decompression required, just calculate direct ascent time
+    if (stops.length === 0) {
+      return currentDepth / ascentRate;
+    }
+    
+    let totalTime = 0;
+    let currentPosition = currentDepth;
+    
+    // Add ascent time from current depth to first stop
+    const firstStop = stops[0];
+    if (firstStop && currentPosition > firstStop.depth) {
+      totalTime += (currentPosition - firstStop.depth) / ascentRate;
+      currentPosition = firstStop.depth;
+    }
+    
+    // Add time for each stop and ascent between stops
+    for (let i = 0; i < stops.length; i++) {
+      const stop = stops[i];
+      if (!stop) continue;
+      
+      // Add stop time
+      totalTime += stop.time;
+      
+      // Add ascent time to next stop (or surface if last stop)
+      const nextDepth = i < stops.length - 1 ? stops[i + 1]?.depth || 0 : 0;
+      if (currentPosition > nextDepth) {
+        totalTime += (currentPosition - nextDepth) / ascentRate;
+        currentPosition = nextDepth;
+      }
+    }
+    
+    return totalTime;
+  }
+
+  /**
    * Update the current dive state
    * @param newState New dive state
    */
