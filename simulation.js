@@ -2081,7 +2081,7 @@ class DiveSimulator {
             const canAscend = model.canAscendDirectly();
             
             // Calculate total time to surface (TTS) including ascent time
-            const totalTime = model.calculateTTS ? model.calculateTTS() : stops.reduce((sum, stop) => sum + stop.time, 0);
+            const totalTime = model.calculateTTS();
             
             // Update ceiling and TTS
             document.getElementById(`${name}-ceiling`).textContent = `${Math.round(ceiling)}m`;
