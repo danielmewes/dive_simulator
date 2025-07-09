@@ -331,8 +331,13 @@ export class VpmBModel extends DecompressionModel {
     // Ceiling is depth where ambient pressure equals total loading minus allowable supersaturation
     const ceilingPressure = totalLoading - allowableSupersaturation;
     const ceilingDepth = (ceilingPressure - this.surfacePressure) / 0.1;
+    
+    // Apply additional conservatism adjustment to ensure visible effect
+    // Higher conservatism levels result in deeper (more conservative) ceilings
+    const conservatismAdjustment = this.conservatismLevel * 0.5; // 0.5m per conservatism level
+    const adjustedCeilingDepth = ceilingDepth + conservatismAdjustment;
 
-    return Math.max(0, ceilingDepth);
+    return Math.max(0, adjustedCeilingDepth);
   }
 
   private calculateAllowableSupersaturation(compartment: VpmBCompartment): number {
@@ -344,9 +349,10 @@ export class VpmBModel extends DecompressionModel {
     const bubblePressure = (2.0 * surfaceTension) / criticalRadius;
     
     // Apply conservatism adjustment
-    const conservatismFactor = 1.0 + (this.conservatismLevel * 0.1);
+    // Higher conservatism levels reduce allowable supersaturation (more conservative)
+    const conservatismFactor = 1.0 - (this.conservatismLevel * 0.1);
     
-    return bubblePressure / conservatismFactor;
+    return bubblePressure * conservatismFactor;
   }
 
   private calculateBubbleRadius(excessPressure: number, criticalRadius: number): number {

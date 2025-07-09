@@ -40,44 +40,44 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
   switch(type.toLowerCase()) {
     case 'buhlmann':
       return new BuhlmannModel({
-        low: options.gradientFactorLow || 30,
-        high: options.gradientFactorHigh || 85
+        low: options.gradientFactorLow ?? 30,
+        high: options.gradientFactorHigh ?? 85
       });
     case 'vpmb':
-      return new VpmBModel(options.conservatism || 2);
+      return new VpmBModel(options.conservatism ?? 2);
     case 'bvm':
       return new BvmModel({
-        conservatism: options.conservatism || 2,
-        maxDcsRisk: options.maxDcsRisk || 5.0
+        conservatism: options.conservatism ?? 2,
+        maxDcsRisk: options.maxDcsRisk ?? 5.0
       });
     case 'vval18':
       return new VVal18ThalmannModel({
-        maxDcsRisk: options.dcsRiskPercent || 2.3,
-        gradientFactorLow: options.gradientFactorLow || 0.30,
-        gradientFactorHigh: options.gradientFactorHigh || 0.85
+        maxDcsRisk: options.dcsRiskPercent ?? 2.3,
+        gradientFactorLow: options.gradientFactorLow ?? 0.30,
+        gradientFactorHigh: options.gradientFactorHigh ?? 0.85
       });
     case 'rgbm':
       return new RgbmFoldedModel({
-        conservatism: options.conservatism || 2
+        conservatism: options.conservatism ?? 2
       });
     case 'tbdm':
       return new TbdmModel({
-        conservatismFactor: options.conservatismFactor || 1.0,
-        bodyTemperature: options.bodyTemperature || 37.0
+        conservatismFactor: options.conservatismFactor ?? 1.0,
+        bodyTemperature: options.bodyTemperature ?? 37.0
       });
     case 'nmri98':
       return new Nmri98Model({
-        conservatism: options.conservatism || 3,
-        maxDcsRisk: options.maxDcsRisk || 2.0,
-        safetyFactor: options.safetyFactor || 1.2,
+        conservatism: options.conservatism ?? 3,
+        maxDcsRisk: options.maxDcsRisk ?? 2.0,
+        safetyFactor: options.safetyFactor ?? 1.2,
         enableOxygenTracking: options.enableOxygenTracking !== false
       });
     case 'hills':
       return new HillsModel({
-        conservatismFactor: options.conservatismFactor || 1.0,
-        coreTemperature: options.coreTemperature || 37.0,
-        metabolicRate: options.metabolicRate || 1.2,
-        perfusionMultiplier: options.perfusionMultiplier || 1.0
+        conservatismFactor: options.conservatismFactor ?? 1.0,
+        coreTemperature: options.coreTemperature ?? 37.0,
+        metabolicRate: options.metabolicRate ?? 1.2,
+        perfusionMultiplier: options.perfusionMultiplier ?? 1.0
       });
     default:
       throw new Error('Unknown model type: ' + type);

@@ -90,8 +90,8 @@ export class BvmModel extends DecompressionModel {
       this.conservatismLevel = Math.max(0, Math.min(5, options));
       this.maxDcsRisk = 5.0; // Default value
     } else {
-      this.conservatismLevel = Math.max(0, Math.min(5, options.conservatism || 3));
-      this.maxDcsRisk = Math.max(0.1, Math.min(100, options.maxDcsRisk || 5.0));
+      this.conservatismLevel = Math.max(0, Math.min(5, options.conservatism ?? 3));
+      this.maxDcsRisk = Math.max(0.1, Math.min(100, options.maxDcsRisk ?? 5.0));
     }
     
     this.bubbleVolumeParameters = {

@@ -110,7 +110,7 @@ export class HillsModel extends DecompressionModel {
   } = {}) {
     super();
     
-    this.conservatismFactor = Math.max(0.5, Math.min(2.0, options.conservatismFactor || 1.0));
+    this.conservatismFactor = Math.max(0.5, Math.min(2.0, options.conservatismFactor ?? 1.0));
     
     this.thermodynamicParams = {
       coreTemperature: options.coreTemperature || 37.0,
