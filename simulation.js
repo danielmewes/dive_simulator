@@ -1029,6 +1029,40 @@ class DiveSimulator {
                         yAxisID: 'rate'
                     },
                     {
+                        label: 'TBDM Bubble Volume Fraction (Comp 1)',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'tbdmVolumeFraction'
+                    },
+                    {
+                        label: 'TBDM Bubble Risk Factor',
+                        data: [],
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        tension: 0.4,
+                        borderDash: [4, 2],
+                        yAxisID: 'tbdmRisk'
+                    },
+                    {
+                        label: 'Hills Tissue Temperature (°C)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'hillsTemperature'
+                    },
+                    {
+                        label: 'Hills Dissolution Enthalpy (J/mol)',
+                        data: [],
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        tension: 0.4,
+                        borderDash: [3, 3],
+                        yAxisID: 'hillsEnthalpy'
+                    },
+                    {
                         label: 'Dive Profile',
                         data: [],
                         borderColor: '#94a3b8',
@@ -1124,6 +1158,58 @@ class DiveSimulator {
                         grid: {
                             drawOnChartArea: false,
                         },
+                    },
+                    tbdmVolumeFraction: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'TBDM Bubble Volume Fraction',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { 
+                            color: 'rgba(139, 92, 246, 0.1)',
+                            drawOnChartArea: false,
+                        },
+                        max: 0.05, // TBDM max bubble volume fraction
+                        min: 0
+                    },
+                    tbdmRisk: {
+                        type: 'linear',
+                        display: false,
+                        position: 'left',
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                        max: 1.0, // Risk factor 0-1
+                        min: 0
+                    },
+                    hillsTemperature: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Hills Temperature (°C) / Enthalpy (J/mol)',
+                            color: '#e2e8f0'
+                        },
+                        ticks: { color: '#e2e8f0' },
+                        grid: { 
+                            color: 'rgba(239, 68, 68, 0.1)',
+                            drawOnChartArea: false,
+                        },
+                        max: 40, // Reasonable temperature range
+                        min: 35
+                    },
+                    hillsEnthalpy: {
+                        type: 'linear',
+                        display: false,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false,
+                        }
                     },
                     depth: {
                         type: 'linear',
@@ -1929,6 +2015,38 @@ class DiveSimulator {
                         historyPoint.models[name].bubbleResolutionRate = 0;
                     }
                 }
+
+                if (name === 'tbdm' && typeof model.getTbdmCompartmentData === 'function') {
+                    try {
+                        const tbdmData = model.getTbdmCompartmentData(1); // First compartment
+                        historyPoint.models[name].bubbleVolumeFraction = tbdmData.bubbleVolumeFraction;
+                        historyPoint.models[name].bubbleRisk = model.calculateBubbleRisk();
+                        historyPoint.models[name].bubbleNucleationThreshold = tbdmData.bubbleNucleationThreshold;
+                        historyPoint.models[name].bubbleEliminationRate = tbdmData.bubbleEliminationRate;
+                    } catch (tbdmError) {
+                        console.warn('Error getting TBDM bubble parameters:', tbdmError);
+                        historyPoint.models[name].bubbleVolumeFraction = 0;
+                        historyPoint.models[name].bubbleRisk = 0;
+                        historyPoint.models[name].bubbleNucleationThreshold = 2.0;
+                        historyPoint.models[name].bubbleEliminationRate = 0.1;
+                    }
+                }
+
+                if (name === 'hills' && typeof model.getHillsCompartmentData === 'function') {
+                    try {
+                        const hillsData = model.getHillsCompartmentData(1); // First compartment
+                        historyPoint.models[name].tissueTemperature = hillsData.tissueTemperature;
+                        historyPoint.models[name].dissolutionEnthalpy = hillsData.dissolutionEnthalpy;
+                        historyPoint.models[name].thermalDiffusivity = hillsData.thermalDiffusivity;
+                        historyPoint.models[name].heatCapacity = hillsData.heatCapacity;
+                    } catch (hillsError) {
+                        console.warn('Error getting Hills thermodynamic parameters:', hillsError);
+                        historyPoint.models[name].tissueTemperature = 37.0;
+                        historyPoint.models[name].dissolutionEnthalpy = 0;
+                        historyPoint.models[name].thermalDiffusivity = 0.14e-6;
+                        historyPoint.models[name].heatCapacity = 3500;
+                    }
+                }
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
                 // Provide default values
@@ -2302,7 +2420,7 @@ class DiveSimulator {
         // Update detailed tissue chart
         this.updateDetailedTissueChart();
         
-        // Update bubble parameters chart (VPM-B and BVM only - NMRI98 and others don't have bubble parameters)
+        // Update bubble parameters chart (VPM-B, BVM, TBDM, and Hills models have bubble/thermodynamic parameters)
         this.bubbleChart.data.labels = timeLabels;
         
         // VPM-B Bubble Count (Compartment 1) - Dataset 0
@@ -2329,8 +2447,32 @@ class DiveSimulator {
             h.models.bvm && h.models.bvm.bubbleFormationRate !== undefined ? h.models.bvm.bubbleFormationRate : 0
         );
         
-        // Dive profile overlay - Dataset 4 (always visible)
-        this.bubbleChart.data.datasets[4].data = this.diveHistory.map(h => h.depth);
+        // TBDM Bubble Volume Fraction (Compartment 1) - Dataset 4
+        this.bubbleChart.data.datasets[4].hidden = !this.enabledModels.tbdm;
+        this.bubbleChart.data.datasets[4].data = zoomedHistory.map(h => 
+            h.models.tbdm && h.models.tbdm.bubbleVolumeFraction !== undefined ? h.models.tbdm.bubbleVolumeFraction : 0
+        );
+        
+        // TBDM Bubble Risk Factor - Dataset 5
+        this.bubbleChart.data.datasets[5].hidden = !this.enabledModels.tbdm;
+        this.bubbleChart.data.datasets[5].data = zoomedHistory.map(h => 
+            h.models.tbdm && h.models.tbdm.bubbleRisk !== undefined ? h.models.tbdm.bubbleRisk : 0
+        );
+        
+        // Hills Tissue Temperature (Compartment 1) - Dataset 6
+        this.bubbleChart.data.datasets[6].hidden = !this.enabledModels.hills;
+        this.bubbleChart.data.datasets[6].data = zoomedHistory.map(h => 
+            h.models.hills && h.models.hills.tissueTemperature !== undefined ? h.models.hills.tissueTemperature : 37
+        );
+        
+        // Hills Dissolution Enthalpy (Compartment 1) - Dataset 7
+        this.bubbleChart.data.datasets[7].hidden = !this.enabledModels.hills;
+        this.bubbleChart.data.datasets[7].data = zoomedHistory.map(h => 
+            h.models.hills && h.models.hills.dissolutionEnthalpy !== undefined ? h.models.hills.dissolutionEnthalpy : 0
+        );
+        
+        // Dive profile overlay - Dataset 8 (always visible)
+        this.bubbleChart.data.datasets[8].data = this.diveHistory.map(h => h.depth);
         
         this.bubbleChart.update('default');
         
