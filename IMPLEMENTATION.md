@@ -310,6 +310,15 @@ The `HillsModel` class implements a thermodynamic approach to decompression, con
 - Metabolic rate adjustments
 - Thermal equilibration time constants
 
+### Ceiling Calculation
+
+The Hills model uses the **oxygen window** (partial pressure vacancy) approach:
+
+- **Oxygen Window**: Uses metabolic oxygen consumption as decompression buffer
+- **Temperature Effects**: Adjusts for tissue temperature and metabolic activity
+- **Depth Adjustment**: Considers oxygen partial pressure at depth
+- **Metabolic Factor**: Incorporates compartment-specific metabolic coefficients
+
 ### Unique Methods
 
 ```typescript
@@ -486,6 +495,15 @@ The `TbdmModel` class combines tissue compartment modeling with bubble nucleatio
 - Maximum bubble volume fraction: 5%
 - Body temperature: 37.0°C
 
+### Ceiling Calculation
+
+The TBDM model combines **bubble growth dynamics** with **DCS risk assessment**:
+
+- **Bubble Growth Rate**: Uses supersaturation and existing bubble volume
+- **DCS Risk Threshold**: 5% maximum DCS risk limit
+- **Binary Search**: Finds ceiling where both bubble growth and DCS risk are acceptable
+- **Perfusion Effects**: Incorporates tissue-specific perfusion rates
+
 ### Unique Methods
 
 ```typescript
@@ -543,6 +561,15 @@ The `VVal18ThalmannModel` class implements the three-compartment linear-exponent
 **Crossover Pressures**: [0.4, 0.2, 0.1] bar
 **Default Gradient Factors**: 30/85
 
+### Ceiling Calculation
+
+The VVal-18 model uses **3.5% DCS risk threshold** with binary search optimization:
+
+- **Risk Threshold**: 3.5% maximum DCS risk from Navy validation
+- **Binary Search**: Precise ceiling determination within 0.1m tolerance
+- **M-value Based**: Risk calculation based on exceedance over M-values
+- **Linear-Exponential**: Uses asymmetric gas kinetics for uptake/elimination
+
 ### Unique Methods
 
 ```typescript
@@ -590,6 +617,321 @@ const stops = vval18Model.calculateDecompressionStops();
 | RGBM | 16 | Bubble + dissolved | F-factor modifications | Modified M-values |
 | TBDM | 16 | Tissue-bubble diffusion | Perfusion effects | Bubble volume fraction |
 | VVal-18 | 3 | Linear-exponential | Navy validation | Gradient factor based |
+
+---
+
+## Ceiling Calculations
+
+The ceiling calculation is one of the most critical aspects of decompression modeling, representing the minimum safe depth a diver can ascend to at any given time. Each model implements ceiling calculations based on its theoretical foundation and DCS risk assessment approach.
+
+### Overview of Ceiling Calculation Methods
+
+All models implement the `calculateCeiling()` method that returns the deepest (maximum) ceiling across all tissue compartments, but each uses a different approach:
+
+```typescript
+public calculateCeiling(): number {
+  // Returns ceiling depth in meters (0 = surface)
+  // Calculated based on model-specific algorithms
+}
+```
+
+### VPM-B Model Ceiling Calculation
+
+The VPM-B model calculates ceiling using **bubble mechanics** and **critical volume theory**:
+
+```typescript
+private calculateCompartmentCeiling(compartment: VpmBCompartment): number {
+  // Uses bubble count and critical radius
+  const bubbleCount = this.calculateBubbleCount(compartment);
+  const criticalRadius = compartment.currentCriticalRadius;
+  
+  // Ceiling based on bubble volume and critical volume hypothesis
+  const allowablePressure = this.calculateAllowablePressure(bubbleCount, criticalRadius);
+  return this.pressureToDepth(allowablePressure);
+}
+```
+
+**Key Features:**
+- Based on microbubble formation and growth
+- Uses critical radius adjustments
+- Considers bubble volume dynamics
+- Applies conservatism levels (0-5)
+
+### Buhlmann Model Ceiling Calculation  
+
+The Buhlmann model uses **M-values** with **gradient factors** for conservative decompression:
+
+```typescript
+private calculateCompartmentCeiling(compartment: BuhlmannCompartment): number {
+  const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+  
+  // Apply gradient factors to M-values
+  const mValue = this.calculateMValue(compartment);
+  const gradientFactor = this.interpolateGradientFactor();
+  const allowableGradient = mValue * gradientFactor;
+  
+  // Ceiling based on supersaturation limits
+  const ceilingPressure = totalLoading - allowableGradient;
+  return this.pressureToDepth(ceilingPressure);
+}
+```
+
+**Key Features:**
+- Uses tissue-specific M-values
+- Applies gradient factors (GF Low/High)
+- Interpolates gradient factors based on depth
+- Considers both nitrogen and helium loading
+
+### Hills Thermodynamic Model Ceiling Calculation
+
+The Hills model implements **oxygen window** (partial pressure vacancy) approach:
+
+```typescript
+private calculateThermodynamicCeiling(compartment: HillsCompartment): number {
+  const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+  
+  // Hills thermodynamic model: Use oxygen window approach
+  const oxygenWindow = this.calculateOxygenWindow(compartment);
+  
+  // Tissue may be safely decompressed if pressure reduction 
+  // does not exceed oxygen window value
+  const allowableDecompression = oxygenWindow;
+  const maxAllowablePressure = totalLoading - allowableDecompression;
+  
+  return this.pressureToDepth(maxAllowablePressure);
+}
+```
+
+**Oxygen Window Calculation:**
+```typescript
+private calculateOxygenWindow(compartment: HillsCompartment): number {
+  const baseOxygenWindow = 0.4; // bar - typical oxygen window
+  
+  // Adjust for tissue metabolism and temperature
+  const metabolicFactor = compartment.metabolicCoefficient;
+  const tempFactor = (compartment.tissueTemperature + 273.15) / (37.0 + 273.15);
+  
+  // Depth adjustment for oxygen partial pressure
+  const oxygenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.oxygen);
+  const depthAdjustment = Math.max(0.1, 1.0 - (oxygenPP - 0.21) * 0.5);
+  
+  return baseOxygenWindow * metabolicFactor * tempFactor * depthAdjustment;
+}
+```
+
+**Key Features:**
+- Uses oxygen metabolic consumption as decompression buffer
+- Adjusts for tissue temperature and metabolism
+- Considers metabolic heat production
+- Incorporates thermodynamic principles
+
+### VVal-18 Thalmann Model Ceiling Calculation
+
+The VVal-18 model uses **3.5% DCS risk threshold** with binary search optimization:
+
+```typescript
+private calculateCompartmentCeiling(compartment: VVal18Compartment): number {
+  const maxAllowableRisk = this.parameters.maxDcsRisk; // 3.5%
+  
+  // Binary search to find depth where DCS risk equals threshold
+  let lowDepth = 0;
+  let highDepth = this.currentDiveState.depth;
+  const tolerance = 0.1; // 0.1 meter tolerance
+  
+  while (highDepth - lowDepth > tolerance) {
+    const testDepth = (lowDepth + highDepth) / 2;
+    const testPressure = this.calculateAmbientPressure(testDepth);
+    
+    // Calculate DCS risk at this depth
+    const dcsRisk = this.calculateCompartmentDCSRisk(compartment, testPressure);
+    
+    if (dcsRisk <= maxAllowableRisk) {
+      highDepth = testDepth; // Can go shallower
+    } else {
+      lowDepth = testDepth; // Must stay deeper
+    }
+  }
+  
+  return Math.max(0, highDepth);
+}
+```
+
+**DCS Risk Calculation:**
+```typescript
+private calculateCompartmentDCSRisk(compartment: VVal18Compartment, ambientPressure: number): number {
+  const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+  const mValue = compartment.mValue;
+  const maxAllowableLoading = ambientPressure + mValue;
+  
+  if (totalLoading <= maxAllowableLoading) {
+    return 0; // No DCS risk
+  }
+  
+  // Calculate risk based on exceedance over M-value
+  const exceedance = totalLoading - maxAllowableLoading;
+  const riskFactor = exceedance / mValue;
+  
+  // Convert to percentage using VVal-18 specific risk model
+  const riskPercentage = Math.min(100, riskFactor * riskFactor * 20);
+  
+  return riskPercentage;
+}
+```
+
+**Key Features:**
+- Uses 3.5% DCS risk threshold from Navy validation
+- Binary search for precise ceiling determination
+- Linear-exponential kinetics for gas uptake/elimination
+- Based on US Navy Mk15 rebreather testing
+
+### TBDM Model Ceiling Calculation
+
+The TBDM model combines **bubble growth dynamics** with **DCS risk assessment**:
+
+```typescript
+private calculateCompartmentCeiling(compartment: TbdmCompartment): number {
+  // Binary search to find ceiling depth based on bubble growth dynamics
+  let lowDepth = 0;
+  let highDepth = this.currentDiveState.depth;
+  const tolerance = 0.1; // 0.1 meter tolerance
+  const maxBubbleGrowthRate = 0.1; // Maximum safe bubble growth rate
+  
+  while (highDepth - lowDepth > tolerance) {
+    const testDepth = (lowDepth + highDepth) / 2;
+    const testPressure = this.calculateAmbientPressure(testDepth);
+    
+    // Calculate bubble growth rate and DCS risk at this depth
+    const bubbleGrowthRate = this.calculateBubbleGrowthRate(compartment, testPressure);
+    const dcsRisk = this.calculateCompartmentDCSRisk(compartment, testPressure);
+    
+    if (bubbleGrowthRate <= maxBubbleGrowthRate && dcsRisk <= 5.0) { // 5% DCS risk threshold
+      highDepth = testDepth; // Can go shallower
+    } else {
+      lowDepth = testDepth; // Must stay deeper
+    }
+  }
+  
+  return Math.max(0, highDepth);
+}
+```
+
+**Bubble Growth Rate Calculation:**
+```typescript
+private calculateBubbleGrowthRate(compartment: TbdmCompartment, ambientPressure: number): number {
+  const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+  const supersaturation = Math.max(0, totalLoading - ambientPressure);
+  
+  if (supersaturation <= 0) {
+    return 0; // No bubble growth below saturation
+  }
+  
+  // Growth rate proportional to supersaturation and existing bubble volume
+  const currentBubbleVolume = compartment.bubbleVolumeFraction;
+  const growthRate = supersaturation * compartment.bubbleFormationCoefficient * (1 + currentBubbleVolume);
+  
+  return growthRate;
+}
+```
+
+**Key Features:**
+- Combines bubble nucleation and growth dynamics
+- Uses tissue-specific perfusion rates
+- Considers bubble volume fraction limits
+- Incorporates temperature and metabolic effects
+
+### BVM(3) Model Ceiling Calculation
+
+The BVM(3) model uses **probabilistic DCS risk** based on **bubble volume**:
+
+```typescript
+private calculateCompartmentCeiling(compartment: BvmCompartment): number {
+  const maxDcsRisk = this.maxDcsRisk; // Configurable risk threshold
+  
+  // Find depth where DCS risk equals maximum allowable
+  // Uses bubble volume and exponential risk function
+  const bubbleVolume = compartment.bubbleVolume;
+  const riskCoefficient = compartment.riskCoefficient;
+  
+  // Calculate allowable pressure based on bubble volume risk
+  const allowablePressure = this.calculateAllowablePressureFromBubbleVolume(
+    bubbleVolume, riskCoefficient, maxDcsRisk
+  );
+  
+  return this.pressureToDepth(allowablePressure);
+}
+```
+
+**Key Features:**
+- Uses bubble volume as primary risk indicator
+- Probabilistic approach with exponential risk function
+- Configurable DCS risk thresholds
+- Three-compartment model with risk weighting
+
+### Ceiling Calculation Comparison
+
+| Model | Ceiling Method | Primary Factor | Risk Threshold | Unique Features |
+|-------|---------------|----------------|----------------|----------------|
+| VPM-B | Bubble mechanics | Microbubble count | Critical volume | Dynamic critical radius |
+| Buhlmann | M-value + GF | Supersaturation | Gradient factors | GF interpolation |
+| Hills | Oxygen window | Metabolic buffer | Thermodynamic | Temperature effects |
+| VVal-18 | DCS risk threshold | 3.5% risk limit | Binary search | Navy validation |
+| TBDM | Bubble growth + risk | Growth rate + 5% risk | Dual threshold | Perfusion effects |
+| BVM(3) | Bubble volume risk | Volume-based probability | Configurable | Probabilistic |
+
+### Implementation Notes
+
+**Binary Search Optimization**: Models using DCS risk thresholds (VVal-18, TBDM) employ binary search algorithms for precise ceiling determination, providing accurate results within 0.1 meter tolerance.
+
+**Real-time Calculation**: All ceiling calculations are performed in real-time during dive simulation, updating as tissue loadings change.
+
+**Conservative Factors**: Most models include configurable conservatism factors that can be adjusted to make ceiling calculations more or less conservative.
+
+**Multi-gas Support**: All models support air, nitrox, and trimix calculations in their ceiling computations.
+
+### Usage Examples
+
+```typescript
+// Compare ceiling calculations across models
+const depth = 40; // meters
+const time = 30; // minutes
+const air = { oxygen: 0.21, helium: 0.0, get nitrogen() { return 0.79; } };
+
+// VPM-B ceiling
+const vpmb = new VpmBModel(3);
+vpmb.updateDiveState({ depth, time: 0, gasMix: air });
+vpmb.updateTissueLoadings(time);
+const vpmbCeiling = vpmb.calculateCeiling();
+
+// Buhlmann ceiling
+const buhlmann = new BuhlmannModel();
+buhlmann.updateDiveState({ depth, time: 0, gasMix: air });
+buhlmann.updateTissueLoadings(time);
+const buhlmannCeiling = buhlmann.calculateCeiling();
+
+// Hills ceiling
+const hills = new HillsModel();
+hills.updateDiveState({ depth, time: 0, gasMix: air });
+hills.updateTissueLoadings(time);
+const hillsCeiling = hills.calculateCeiling();
+
+// VVal-18 ceiling
+const vval18 = new VVal18ThalmannModel();
+vval18.updateDiveState({ depth, time: 0, gasMix: air });
+vval18.updateTissueLoadings(time);
+const vval18Ceiling = vval18.calculateCeiling();
+
+// TBDM ceiling
+const tbdm = new TbdmModel();
+tbdm.updateDiveState({ depth, time: 0, gasMix: air });
+tbdm.updateTissueLoadings(time);
+const tbdmCeiling = tbdm.calculateCeiling();
+
+console.log(`VPM-B: ${vpmbCeiling.toFixed(1)}m`);
+console.log(`Buhlmann: ${buhlmannCeiling.toFixed(1)}m`);
+console.log(`Hills: ${hillsCeiling.toFixed(1)}m`);
+console.log(`VVal-18: ${vval18Ceiling.toFixed(1)}m`);
+console.log(`TBDM: ${tbdmCeiling.toFixed(1)}m`);
+```
 
 ## References
 
