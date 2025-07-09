@@ -2093,7 +2093,7 @@ class DiveSimulator {
         Object.entries(this.models).forEach(([name, model]) => {
             if (!this.enabledModels[name]) return; // Skip disabled models
             const ceiling = model.calculateCeiling();
-            const stops = model.calculateDecompressionStops();
+            const stops = model.calculateConsolidatedDecompressionStops();
             const canAscend = model.canAscendDirectly();
             
             // Calculate total time to surface (TTS) including ascent time

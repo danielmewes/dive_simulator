@@ -101,6 +101,15 @@ export abstract class DecompressionModel {
   public abstract calculateDecompressionStops(): DecompressionStop[];
 
   /**
+   * Calculate required decompression stops consolidated to 5m intervals
+   * @returns Array of consolidated decompression stops at 5m increments
+   */
+  public calculateConsolidatedDecompressionStops(): DecompressionStop[] {
+    const originalStops = this.calculateDecompressionStops();
+    return this.consolidateDecompressionStops(originalStops);
+  }
+
+  /**
    * Check if direct ascent to surface is safe
    * @returns True if safe to ascend directly
    */
@@ -119,12 +128,55 @@ export abstract class DecompressionModel {
   public abstract calculateDCSRisk(): number;
 
   /**
+   * Consolidate decompression stops to 5-meter increments
+   * Combines stops that are within 5m of each other, summing their times
+   * @param stops Original decompression stops
+   * @returns Consolidated stops at 5m intervals
+   */
+  protected consolidateDecompressionStops(stops: DecompressionStop[]): DecompressionStop[] {
+    if (stops.length === 0) {
+      return stops;
+    }
+
+    const consolidated: DecompressionStop[] = [];
+    const stopsByDepth = new Map<number, DecompressionStop>();
+
+    // Group stops by 5m intervals
+    for (const stop of stops) {
+      // Round depth to nearest 5m increment (5, 10, 15, 20, etc.)
+      const consolidatedDepth = Math.ceil(stop.depth / 5) * 5;
+      
+      if (stopsByDepth.has(consolidatedDepth)) {
+        // Add time to existing stop at this depth
+        const existingStop = stopsByDepth.get(consolidatedDepth)!;
+        existingStop.time += stop.time;
+      } else {
+        // Create new stop at consolidated depth
+        stopsByDepth.set(consolidatedDepth, {
+          depth: consolidatedDepth,
+          time: stop.time,
+          gasMix: stop.gasMix
+        });
+      }
+    }
+
+    // Convert map to array and sort by depth (deepest first)
+    for (const stop of stopsByDepth.values()) {
+      consolidated.push(stop);
+    }
+    
+    consolidated.sort((a, b) => b.depth - a.depth);
+    return consolidated;
+  }
+
+  /**
    * Calculate time to surface (TTS) including ascent time and decompression stops
    * @param ascentRate Ascent rate in meters per minute (default: 9 m/min)
    * @returns Total time to surface in minutes
    */
   public calculateTTS(ascentRate: number = 9): number {
-    const stops = this.calculateDecompressionStops();
+    const originalStops = this.calculateDecompressionStops();
+    const stops = this.consolidateDecompressionStops(originalStops);
     const currentDepth = this.currentDiveState.depth;
     
     // If no decompression required, just calculate direct ascent time
