@@ -132,7 +132,7 @@ class DiveSimulator {
         });
         
         descendFastBtn.addEventListener('click', () => {
-            this.setDepth(Math.min(60, this.currentDepth + 5));
+            this.setDepth(Math.min(200, this.currentDepth + 5));
         });
         
         ascendSlowBtn.addEventListener('click', () => {
@@ -1233,7 +1233,7 @@ class DiveSimulator {
     }
     
     setDepth(newDepth) {
-        this.currentDepth = Math.max(0, Math.min(60, newDepth));
+        this.currentDepth = Math.max(0, Math.min(200, newDepth));
         document.getElementById('depth-slider').value = this.currentDepth;
         
         // Update all models
