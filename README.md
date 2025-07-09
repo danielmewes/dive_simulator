@@ -169,8 +169,18 @@ A comprehensive browser-based interface for real-time dive decompression simulat
 ### Build the Project
 ```bash
 npm install          # Install development dependencies
-npm run build       # Compile TypeScript to JavaScript
+
+# Development
+npm run serve        # Start development server with hot reloading (http://localhost:3000)
+npm run build:dev    # Build development bundle with source maps
+
+# Production
+npm run build:browser # Build optimized production bundle
+
+# Legacy/Testing
+npm run build        # Compile TypeScript to CommonJS (for Node.js)
 npm test            # Run comprehensive test suite
+npm run lint        # Run ESLint
 npm run demo        # Interactive model demonstrations
 ```
 
