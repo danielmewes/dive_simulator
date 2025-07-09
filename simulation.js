@@ -995,7 +995,7 @@ class DiveSimulator {
                 labels: [],
                 datasets: [
                     {
-                        label: 'VPM-B Bubble Count (Comp 1)',
+                        label: 'VPM-B Bubble Count (Total)',
                         data: [],
                         borderColor: '#34d399',
                         backgroundColor: 'rgba(52, 211, 153, 0.1)',
@@ -1003,7 +1003,7 @@ class DiveSimulator {
                         yAxisID: 'count'
                     },
                     {
-                        label: 'VPM-B Critical Radius (nm)',
+                        label: 'VPM-B Critical Radius (Avg nm)',
                         data: [],
                         borderColor: '#10b981',
                         backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -1012,7 +1012,7 @@ class DiveSimulator {
                         yAxisID: 'radius'
                     },
                     {
-                        label: 'BVM(3) Bubble Volume (Comp 1)',
+                        label: 'BVM(3) Bubble Volume (Total)',
                         data: [],
                         borderColor: '#f59e0b',
                         backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -1020,7 +1020,7 @@ class DiveSimulator {
                         yAxisID: 'volume'
                     },
                     {
-                        label: 'BVM(3) Formation Rate',
+                        label: 'BVM(3) Formation Rate (Total)',
                         data: [],
                         borderColor: '#d97706',
                         backgroundColor: 'rgba(217, 119, 6, 0.1)',
@@ -1029,7 +1029,7 @@ class DiveSimulator {
                         yAxisID: 'rate'
                     },
                     {
-                        label: 'TBDM Bubble Volume Fraction (Comp 1)',
+                        label: 'TBDM Bubble Volume Fraction (Total)',
                         data: [],
                         borderColor: '#8b5cf6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
@@ -1990,10 +1990,21 @@ class DiveSimulator {
                 // Add bubble model specific parameters
                 if (name === 'vpmb' && typeof model.calculateBubbleCount === 'function') {
                     try {
-                        historyPoint.models[name].bubbleCount = model.calculateBubbleCount(1); // First compartment
-                        const vpmData = model.getVpmBCompartmentData(1);
-                        historyPoint.models[name].criticalRadius = vpmData.adjustedCriticalRadius;
-                        historyPoint.models[name].maxCrushingPressure = vpmData.maxCrushingPressure;
+                        // Sum bubble count across all 16 compartments
+                        let totalBubbleCount = 0;
+                        let totalCriticalRadius = 0;
+                        let maxCrushingPressure = 0;
+                        
+                        for (let comp = 1; comp <= 16; comp++) {
+                            totalBubbleCount += model.calculateBubbleCount(comp);
+                            const vpmData = model.getVpmBCompartmentData(comp);
+                            totalCriticalRadius += vpmData.adjustedCriticalRadius;
+                            maxCrushingPressure = Math.max(maxCrushingPressure, vpmData.maxCrushingPressure);
+                        }
+                        
+                        historyPoint.models[name].bubbleCount = totalBubbleCount;
+                        historyPoint.models[name].criticalRadius = totalCriticalRadius / 16; // Average critical radius
+                        historyPoint.models[name].maxCrushingPressure = maxCrushingPressure;
                     } catch (vpmError) {
                         console.warn('Error getting VPM-B bubble parameters:', vpmError);
                         historyPoint.models[name].bubbleCount = 0;
@@ -2004,10 +2015,21 @@ class DiveSimulator {
 
                 if (name === 'bvm' && typeof model.calculateBubbleVolume === 'function') {
                     try {
-                        historyPoint.models[name].bubbleVolume = model.calculateBubbleVolume(1); // First compartment
-                        const bvmData = model.getBvmCompartmentData(1);
-                        historyPoint.models[name].bubbleFormationRate = bvmData.bubbleFormationRate;
-                        historyPoint.models[name].bubbleResolutionRate = bvmData.bubbleResolutionRate;
+                        // Sum bubble volume across all 3 compartments
+                        let totalBubbleVolume = 0;
+                        let totalFormationRate = 0;
+                        let totalResolutionRate = 0;
+                        
+                        for (let comp = 1; comp <= 3; comp++) {
+                            totalBubbleVolume += model.calculateBubbleVolume(comp);
+                            const bvmData = model.getBvmCompartmentData(comp);
+                            totalFormationRate += bvmData.bubbleFormationRate;
+                            totalResolutionRate += bvmData.bubbleResolutionRate;
+                        }
+                        
+                        historyPoint.models[name].bubbleVolume = totalBubbleVolume;
+                        historyPoint.models[name].bubbleFormationRate = totalFormationRate;
+                        historyPoint.models[name].bubbleResolutionRate = totalResolutionRate;
                     } catch (bvmError) {
                         console.warn('Error getting BVM(3) bubble parameters:', bvmError);
                         historyPoint.models[name].bubbleVolume = 0;
@@ -2018,11 +2040,22 @@ class DiveSimulator {
 
                 if (name === 'tbdm' && typeof model.getTbdmCompartmentData === 'function') {
                     try {
-                        const tbdmData = model.getTbdmCompartmentData(1); // First compartment
-                        historyPoint.models[name].bubbleVolumeFraction = tbdmData.bubbleVolumeFraction;
+                        // Sum bubble parameters across all 16 compartments
+                        let totalBubbleVolumeFraction = 0;
+                        let maxBubbleNucleationThreshold = 0;
+                        let totalBubbleEliminationRate = 0;
+                        
+                        for (let comp = 1; comp <= 16; comp++) {
+                            const tbdmData = model.getTbdmCompartmentData(comp);
+                            totalBubbleVolumeFraction += tbdmData.bubbleVolumeFraction;
+                            maxBubbleNucleationThreshold = Math.max(maxBubbleNucleationThreshold, tbdmData.bubbleNucleationThreshold);
+                            totalBubbleEliminationRate += tbdmData.bubbleEliminationRate;
+                        }
+                        
+                        historyPoint.models[name].bubbleVolumeFraction = totalBubbleVolumeFraction;
                         historyPoint.models[name].bubbleRisk = model.calculateBubbleRisk();
-                        historyPoint.models[name].bubbleNucleationThreshold = tbdmData.bubbleNucleationThreshold;
-                        historyPoint.models[name].bubbleEliminationRate = tbdmData.bubbleEliminationRate;
+                        historyPoint.models[name].bubbleNucleationThreshold = maxBubbleNucleationThreshold;
+                        historyPoint.models[name].bubbleEliminationRate = totalBubbleEliminationRate;
                     } catch (tbdmError) {
                         console.warn('Error getting TBDM bubble parameters:', tbdmError);
                         historyPoint.models[name].bubbleVolumeFraction = 0;
