@@ -2047,6 +2047,22 @@ class DiveSimulator {
                         historyPoint.models[name].heatCapacity = 3500;
                     }
                 }
+
+                if (name === 'rgbm' && typeof model.getRgbmCompartmentData === 'function') {
+                    try {
+                        const rgbmData = model.getRgbmCompartmentData(1); // First compartment
+                        historyPoint.models[name].fFactor = rgbmData.fFactor;
+                        historyPoint.models[name].bubbleSeedCount = rgbmData.bubbleSeedCount;
+                        historyPoint.models[name].maxTension = rgbmData.maxTension;
+                        historyPoint.models[name].totalBubbleVolume = model.getTotalBubbleVolume();
+                    } catch (rgbmError) {
+                        console.warn('Error getting RGBM bubble parameters:', rgbmError);
+                        historyPoint.models[name].fFactor = 1.0;
+                        historyPoint.models[name].bubbleSeedCount = 1000;
+                        historyPoint.models[name].maxTension = 1.013;
+                        historyPoint.models[name].totalBubbleVolume = 0;
+                    }
+                }
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
                 // Provide default values
