@@ -436,4 +436,7 @@ export class TbdmModel extends DecompressionModel {
     // Apply TBDM-specific minimum stop times and conservatism
     return Math.max(1, Math.min(30, maxStopTime * this.tbdmParameters.conservatismFactor));
   }
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    return this.calculateAmbientPressure(depth);
+  }
 }

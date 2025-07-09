@@ -561,4 +561,9 @@ export class Nmri98Model extends DecompressionModel {
       canAscend: this.canAscendDirectly()
     };
   }
+
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    // Stub implementation - should be properly implemented based on model specifics
+    return this.calculateAmbientPressure(depth);
+  }
 }

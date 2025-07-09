@@ -206,19 +206,8 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   public calculateCeiling(): number {
-    let maxCeiling = 0;
-
-    // Calculate the first stop depth if not already done
-    if (this.firstStopDepth === 0) {
-      this.firstStopDepth = this.calculateFirstStopDepth();
-    }
-
-    for (const compartment of this.buhlmannCompartments) {
-      const ceiling = this.calculateCompartmentCeiling(compartment);
-      maxCeiling = Math.max(maxCeiling, ceiling);
-    }
-
-    return Math.max(0, maxCeiling);
+    // Use iterative ceiling calculation following Subsurface reference implementation
+    return this.calculateCeilingIterative(0.3);
   }
 
   public calculateDecompressionStops(): DecompressionStop[] {
@@ -433,51 +422,73 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   private calculateFirstStopDepth(): number {
-    // Calculate the deepest stop required by any compartment using full M-values
-    let maxStopDepth = 0;
-
-    for (const compartment of this.buhlmannCompartments) {
-      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
-      const a = compartment.combinedMValueA;
-      const b = compartment.combinedMValueB;
+    // Calculate first stop depth by finding the deepest depth where tissue tolerance fails
+    // This is done iteratively during decompression planning
+    let testDepth = 0;
+    const maxDepth = 200;
+    
+    while (testDepth <= maxDepth) {
+      // Test if this depth is safe without gradient factors (full M-value)
+      const tolerance = this.calculateTissueTolerance(testDepth, false);
       
-      // Calculate depth where tissue pressure equals M-value (no gradient factor)
-      const fullMValuePressure = (totalLoading - b) / a;
-      const stopDepth = (fullMValuePressure - this.surfacePressure) / 0.1;
+      if (tolerance !== null) {
+        // Found the first safe depth using full M-values
+        return Math.max(0, Math.ceil(testDepth / 3) * 3); // Round up to 3m intervals
+      }
       
-      maxStopDepth = Math.max(maxStopDepth, stopDepth);
+      testDepth += 0.3; // Small increment for accuracy
     }
-
-    return Math.max(0, Math.ceil(maxStopDepth / 3) * 3); // Round up to 3m intervals
+    
+    return maxDepth; // Conservative fallback
   }
 
   private calculateStopTime(depth: number): number {
-    // Simplified stop time calculation
-    // In a full implementation, this would involve iterative calculation
-    // to determine the time needed for tissues to off-gas sufficiently
+    // Use binary search method following Subsurface reference implementation
+    const nextDepth = depth - 3; // Next stop is 3m shallower
+    return this.calculateMinimumStopTime(depth, Math.max(0, nextDepth));
+  }
+
+  /**
+   * Calculate tissue tolerance for a given depth (used by ceiling calculations)
+   * This follows the Subsurface reference implementation approach
+   * @param depth Depth in meters to test
+   * @param includeModelSpecificLogic Whether to include gradient factors
+   * @returns Maximum tolerable pressure in bar, or null if depth is unsafe
+   */
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    const ambientPressure = this.calculateAmbientPressure(depth);
+    let maxTolerance = 0;
     
-    const ceiling = this.calculateCeiling();
-    if (depth > ceiling) {
-      return 0; // No stop needed at this depth - it's above the ceiling
+    // Ensure compartments are initialized
+    if (!this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
     }
-
-    // Basic stop time estimation based on supersaturation
-    let maxSupersaturation = 0;
-    for (let i = 1; i <= 16; i++) {
-      const supersaturation = this.calculateSupersaturation(i);
-      maxSupersaturation = Math.max(maxSupersaturation, supersaturation);
+    
+    for (const compartment of this.buhlmannCompartments) {
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      
+      // Calculate M-value at test depth
+      const mValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
+      
+      let allowableTolerance = mValue;
+      
+      if (includeModelSpecificLogic) {
+        // Apply gradient factors following reference implementation
+        const gradientFactor = this.getGradientFactorAtDepth(depth);
+        // GF formula: allowable = ambient + GF * (M-value - ambient)
+        allowableTolerance = ambientPressure + (gradientFactor / 100) * (mValue - ambientPressure);
+      }
+      
+      // The tissue tolerance is the maximum pressure this compartment can handle
+      // If current loading exceeds allowable tolerance, this depth is unsafe
+      if (totalLoading > allowableTolerance) {
+        return null; // Unsafe depth
+      }
+      
+      maxTolerance = Math.max(maxTolerance, allowableTolerance);
     }
-
-    // Estimate stop time based on supersaturation level
-    if (maxSupersaturation > 120) {
-      return Math.min(30, Math.max(3, Math.floor(maxSupersaturation / 10)));
-    } else if (maxSupersaturation > 105) {
-      return Math.min(15, Math.max(2, Math.floor(maxSupersaturation / 15)));
-    } else if (maxSupersaturation > 100) {
-      return Math.min(5, Math.max(1, Math.floor(maxSupersaturation / 20)));
-    }
-
-    return 1; // Minimum stop time
+    
+    return maxTolerance;
   }
 
   /**

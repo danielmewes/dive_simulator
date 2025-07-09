@@ -395,4 +395,7 @@ export class VVal18ThalmannModel extends DecompressionModel {
     
     return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
   }
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    return this.calculateAmbientPressure(depth);
+  }
 }

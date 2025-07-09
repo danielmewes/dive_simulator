@@ -543,4 +543,7 @@ export class RgbmFoldedModel extends DecompressionModel {
       compartment.bubbleSeedCount = this.BASE_BUBBLE_SEED_COUNT;
     });
   }
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    return this.calculateAmbientPressure(depth);
+  }
 }

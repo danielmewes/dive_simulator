@@ -128,6 +128,100 @@ export abstract class DecompressionModel {
   public abstract calculateDCSRisk(): number;
 
   /**
+   * Calculate tissue tolerance for a given depth (used by ceiling calculations)
+   * This is the core method that determines if a depth is safe for a given tissue state
+   * @param depth Depth in meters to test
+   * @param includeModelSpecificLogic Whether to include model-specific bubble mechanics
+   * @returns Maximum tolerable pressure in bar, or null if depth is unsafe
+   */
+  public abstract calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null;
+
+  /**
+   * Calculate ceiling depth iteratively (following Subsurface reference implementation)
+   * This method tests depths progressively to find the minimum safe depth
+   * @param stepSize Step size for iteration in meters (default: 0.3m)
+   * @returns Ceiling depth in meters
+   */
+  protected calculateCeilingIterative(stepSize: number = 0.3): number {
+    // Start from surface and work downward
+    let testDepth = 0;
+    const maxDepth = 200; // Reasonable maximum depth for safety
+    
+    while (testDepth <= maxDepth) {
+      // Test if this depth is safe
+      const tolerance = this.calculateTissueTolerance(testDepth, true);
+      
+      if (tolerance !== null) {
+        // Found a safe depth, return it
+        return testDepth;
+      }
+      
+      // Not safe, try deeper
+      testDepth += stepSize;
+    }
+    
+    // If we get here, something is wrong - return a conservative deep ceiling
+    return maxDepth;
+  }
+
+  /**
+   * Calculate minimum stop time using binary search (following Subsurface reference implementation)
+   * @param stopDepth Depth at which to calculate stop time
+   * @param nextDepth Next depth to ascend to (or 0 for surface)
+   * @param maxTime Maximum time to search (default: 120 minutes)
+   * @returns Minimum stop time in minutes
+   */
+  protected calculateMinimumStopTime(stopDepth: number, nextDepth: number, maxTime: number = 120): number {
+    // Save current state
+    const savedCompartments = this.tissueCompartments.map(c => ({
+      ...c,
+      nitrogenLoading: c.nitrogenLoading,
+      heliumLoading: c.heliumLoading
+    }));
+    
+    // Binary search for minimum time
+    let minTime = 0;
+    let maxTestTime = maxTime;
+    let bestTime = 0;
+    
+    while (maxTestTime - minTime > 0.1) { // 0.1 minute precision
+      const testTime = (minTime + maxTestTime) / 2;
+      
+      // Restore state
+      this.tissueCompartments.forEach((c, i) => {
+        c.nitrogenLoading = savedCompartments[i]!.nitrogenLoading;
+        c.heliumLoading = savedCompartments[i]!.heliumLoading;
+      });
+      
+      // Update dive state to stop depth
+      this.updateDiveState({ depth: stopDepth });
+      
+      // Simulate time at stop depth
+      this.updateTissueLoadings(testTime);
+      
+      // Test if ascent to next depth is safe
+      const tolerance = this.calculateTissueTolerance(nextDepth, true);
+      
+      if (tolerance !== null) {
+        // Safe to ascend after this time
+        maxTestTime = testTime;
+        bestTime = testTime;
+      } else {
+        // Not safe yet, need more time
+        minTime = testTime;
+      }
+    }
+    
+    // Restore original state
+    this.tissueCompartments.forEach((c, i) => {
+      c.nitrogenLoading = savedCompartments[i]!.nitrogenLoading;
+      c.heliumLoading = savedCompartments[i]!.heliumLoading;
+    });
+    
+    return Math.max(1, Math.ceil(bestTime)); // Minimum 1 minute
+  }
+
+  /**
    * Consolidate decompression stops to 5-meter increments
    * Combines stops that are within 5m of each other, summing their times
    * @param stops Original decompression stops
