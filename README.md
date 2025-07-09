@@ -148,25 +148,6 @@ A comprehensive browser-based interface for real-time dive decompression simulat
     └── __tests__/      # Comprehensive test suite
 ```
 
-## 🎯 Use Cases
-
-### Education & Training
-- **Dive Theory**: Understand decompression model differences visually
-- **Safety Training**: Visualize DCS risk factors and ceiling violations
-- **Model Comparison**: See how different algorithms behave in real-time
-- **Gas Management**: Learn about gas switching strategies and effects
-
-### Research & Development
-- **Algorithm Analysis**: Compare model predictions side-by-side
-- **Gas Mixture Effects**: Study Trimix impact on decompression requirements
-- **Dive Profile Design**: Experiment with different ascent profiles
-- **Parameter Sensitivity**: Test conservatism settings and their effects
-
-### Academic Applications
-- **Classroom Demonstrations**: Interactive teaching tool for dive physics
-- **Student Projects**: Foundation for decompression theory studies
-- **Research Papers**: Validated algorithms for academic research
-
 ## 🔧 Development & API
 
 ### Build the Project
@@ -228,26 +209,6 @@ const hillsCeiling = hillsModel.calculateCeiling();
 const hillsThermodynamicRisk = hillsModel.calculateDCSRisk();
 const hillsCompartmentData = hillsModel.getHillsCompartmentData(1); // First compartment thermal data
 ```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-1. **Models not loading**: Refresh page, check browser console for errors
-2. **Charts not updating**: Ensure JavaScript is enabled in browser settings
-3. **Slow performance**: Reduce time acceleration or close other browser tabs
-4. **Mobile display issues**: Rotate device to landscape for optimal viewing
-
-### Performance Tips
-- Use lower time acceleration (1x-5x) for detailed analysis
-- Pause simulation when adjusting multiple settings
-- Reset dive periodically during long simulations
-- Close unused browser tabs to free up memory
-
-### Browser Requirements
-- Modern browser with ES6+ support required
-- JavaScript must be enabled
-- Recommended: Chrome, Firefox, Safari, Edge (latest versions)
-- Minimum screen resolution: 1024x768 for optimal experience
 
 ## ⚠️ Safety Disclaimer
 
