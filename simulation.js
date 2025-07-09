@@ -11,11 +11,11 @@ class DiveSimulator {
             buhlmann: true,
             vpmb: true,
             bvm: true,
-            vval18: true,
-            rgbm: true,
-            tbdm: true,
-            nmri98: true,
-            hills: true
+            vval18: false,
+            rgbm: false,
+            tbdm: false,
+            nmri98: false,
+            hills: false
         };
         this.isRunning = false;
         this.timeSpeed = 1; // Speed multiplier
