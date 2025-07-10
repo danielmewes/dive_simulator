@@ -562,7 +562,7 @@ export class VpmBModel extends DecompressionModel {
       // Find the most restrictive compartment
       for (let i = 0; i < this.vpmBCompartments.length; i++) {
         const compartment = this.vpmBCompartments[i];
-        if (!compartment) continue;
+        if (!compartment) continue; // Skip undefined compartments
         
         const toleratedPressure = this.calculateVpmBToleratedAmbientPressure(compartment, referencePressure, i);
         
@@ -602,10 +602,12 @@ export class VpmBModel extends DecompressionModel {
       return this.surfacePressure; // No tissue loading, safe at surface
     }
     
+    // Prevent division by zero and calculate weighted average gradient
+    const safeLoading = Math.max(totalLoading, 0.001); // Minimum threshold to prevent division by zero
     const totalGradient = (
       (n2Gradient * compartment.nitrogenLoading) + 
       (heGradient * compartment.heliumLoading)
-    ) / totalLoading;
+    ) / safeLoading;
     
     // VPM-B formula: P_tolerated = P_tissue + P_other_gases - total_gradient
     return totalLoading + this.PRESSURE_OTHER_GASES - totalGradient;
@@ -621,8 +623,11 @@ export class VpmBModel extends DecompressionModel {
     // Get the appropriate critical radius for this gas type
     const criticalRadius = gasType === 'nitrogen' ? this.CRIT_RADIUS_N2 : this.CRIT_RADIUS_HE;
     
-    // Apply conservatism adjustment to critical radius
-    const adjustedRadius = criticalRadius * (this.CONSERVATISM_MULTIPLIERS[this.conservatismLevel] || 1.0);
+    // Apply conservatism adjustment to critical radius (with bounds checking)
+    const conservatismMultiplier = (this.conservatismLevel >= 0 && this.conservatismLevel < this.CONSERVATISM_MULTIPLIERS.length) 
+      ? this.CONSERVATISM_MULTIPLIERS[this.conservatismLevel]! 
+      : 1.0;
+    const adjustedRadius = criticalRadius * conservatismMultiplier;
     
     // Use regenerated radius (simplified - using adjusted critical radius for now)
     const regeneratedRadius = Math.max(adjustedRadius, 0.001); // Prevent division by zero
