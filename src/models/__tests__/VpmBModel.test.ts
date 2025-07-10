@@ -269,6 +269,45 @@ describe('VpmBModel', () => {
     });
   });
 
+  describe('VPM-B Ceiling Bug Test', () => {
+    test('should calculate ceiling > 0 for dive to 40m for 15 minutes', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Descend to 40m immediately
+      vpmModel.updateDiveState({
+        depth: 40,
+        time: 0,
+        gasMix: airMix
+      });
+
+      // Stay at 40m for 15 minutes, updating every 10 seconds
+      const timeStepMinutes = 10 / 60; // 10 seconds in minutes
+      let currentTime = 0;
+      
+      for (let i = 0; i < 90; i++) { // 90 * 10 seconds = 15 minutes
+        vpmModel.updateTissueLoadings(timeStepMinutes);
+        currentTime += timeStepMinutes;
+        
+        vpmModel.updateDiveState({ time: currentTime });
+      }
+
+      // Check ceiling at end of bottom time
+      const ceiling = vpmModel.calculateCeiling();
+      console.log(`VPM-B ceiling after 15 minutes at 40m: ${ceiling.toFixed(2)}m`);
+      
+      // This should be > 0 if VPM-B is working correctly
+      expect(ceiling).toBeGreaterThan(0);
+      
+      // The ceiling should be reasonable for a 15-minute dive at 40m
+      expect(ceiling).toBeGreaterThan(10); // Should require significant decompression
+      expect(ceiling).toBeLessThan(40); // But not deeper than the original depth
+    });
+  });
+
   describe('TTS (Time To Surface) Calculation', () => {
     test('should calculate TTS correctly for surface dive', () => {
       const tts = vpmModel.calculateTTS();
