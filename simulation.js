@@ -2171,7 +2171,7 @@ class DiveSimulator {
         });
         
         
-        // TBDM fast tissues (compartment 1 - Fast: 4 min) - Dataset 10
+        // TBDM fast tissues (compartment 1 - Fast: 4 min) - Dataset 8
         this.tissueChart.data.datasets[8].hidden = !this.enabledModels.tbdm;
         this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
             if (!h.models.tbdm || !h.models.tbdm.tissueLoadings || !h.models.tbdm.tissueLoadings[0]) {
@@ -2180,7 +2180,7 @@ class DiveSimulator {
             return h.models.tbdm.tissueLoadings[0];
         });
         
-        // TBDM slow tissues (compartment 3 - Slow: 240 min) - Dataset 11
+        // TBDM slow tissues (compartment 3 - Slow: 240 min) - Dataset 9
         this.tissueChart.data.datasets[9].hidden = !this.enabledModels.tbdm;
         this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
             if (!h.models.tbdm || !h.models.tbdm.tissueLoadings || !h.models.tbdm.tissueLoadings[2]) {
@@ -2189,7 +2189,7 @@ class DiveSimulator {
             return h.models.tbdm.tissueLoadings[2];
         });
         
-        // NMRI98 fast tissues (compartment 1 - Fast: 8 min) - Dataset 12
+        // NMRI98 fast tissues (compartment 1 - Fast: 8 min) - Dataset 10
         this.tissueChart.data.datasets[10].hidden = !this.enabledModels.nmri98;
         this.tissueChart.data.datasets[10].data = zoomedHistory.map(h => {
             if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[0]) {
@@ -2198,7 +2198,7 @@ class DiveSimulator {
             return h.models.nmri98.tissueLoadings[0];
         });
         
-        // NMRI98 slow tissues (compartment 3 - Slow: 120 min) - Dataset 13
+        // NMRI98 slow tissues (compartment 3 - Slow: 120 min) - Dataset 11
         this.tissueChart.data.datasets[11].hidden = !this.enabledModels.nmri98;
         this.tissueChart.data.datasets[11].data = zoomedHistory.map(h => {
             if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[2]) {
@@ -2207,7 +2207,7 @@ class DiveSimulator {
             return h.models.nmri98.tissueLoadings[2];
         });
         
-        // Hills fast tissues (compartment 1 - Fast: 2.5 min) - Dataset 14
+        // Hills fast tissues (compartment 1 - Fast: 2.5 min) - Dataset 12
         this.tissueChart.data.datasets[12].hidden = !this.enabledModels.hills;
         this.tissueChart.data.datasets[12].data = zoomedHistory.map(h => {
             if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[0]) {
@@ -2216,7 +2216,7 @@ class DiveSimulator {
             return h.models.hills.tissueLoadings[0];
         });
         
-        // Hills slow tissues (compartment 16 - Slow: 498 min) - Dataset 15
+        // Hills slow tissues (compartment 16 - Slow: 498 min) - Dataset 13
         this.tissueChart.data.datasets[13].hidden = !this.enabledModels.hills;
         this.tissueChart.data.datasets[13].data = zoomedHistory.map(h => {
             if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[15]) {
@@ -2225,7 +2225,7 @@ class DiveSimulator {
             return h.models.hills.tissueLoadings[15];
         });
         
-        // Ambient pressure overlay - Dataset 16
+        // Ambient pressure overlay - Dataset 14
         this.tissueChart.data.datasets[14].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
@@ -2259,21 +2259,21 @@ class DiveSimulator {
         );
         
         
-        // TBDM ceiling - Dataset 6
+        // TBDM ceiling - Dataset 5
         this.profileChart.data.datasets[5].hidden = !this.enabledModels.tbdm;
         this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
             h.models.tbdm ? h.models.tbdm.ceiling : 0
         );
         
-        // NMRI98 ceiling - Dataset 7
+        // NMRI98 ceiling - Dataset 6
         this.profileChart.data.datasets[6].hidden = !this.enabledModels.nmri98;
         this.profileChart.data.datasets[6].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.ceiling : 0
         );
         
-        // Hills ceiling - Dataset 8
-        this.profileChart.data.datasets[8].hidden = !this.enabledModels.hills;
-        this.profileChart.data.datasets[8].data = zoomedHistory.map(h => 
+        // Hills ceiling - Dataset 7
+        this.profileChart.data.datasets[7].hidden = !this.enabledModels.hills;
+        this.profileChart.data.datasets[7].data = zoomedHistory.map(h => 
             h.models.hills ? h.models.hills.ceiling : 0
         );
         this.profileChart.update('default');
@@ -2306,26 +2306,26 @@ class DiveSimulator {
         );
         
         
-        // TBDM risk over time - Dataset 5
+        // TBDM risk over time - Dataset 4
         this.riskChart.data.datasets[4].hidden = !this.enabledModels.tbdm;
         this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.tbdm ? h.models.tbdm.risk : 0
         );
         
-        // NMRI98 risk over time - Dataset 6
+        // NMRI98 risk over time - Dataset 5
         this.riskChart.data.datasets[5].hidden = !this.enabledModels.nmri98;
         this.riskChart.data.datasets[5].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.risk : 0
         );
         
-        // Hills risk over time - Dataset 7
+        // Hills risk over time - Dataset 6
         this.riskChart.data.datasets[6].hidden = !this.enabledModels.hills;
         this.riskChart.data.datasets[6].data = zoomedHistory.map(h => 
             h.models.hills ? h.models.hills.risk : 0
         );
         
-        // Dive profile overlay - Dataset 8 (always visible)
-        this.riskChart.data.datasets[8].data = zoomedHistory.map(h => h.depth);
+        // Dive profile overlay - Dataset 7 (always visible)
+        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => h.depth);
         
         // Calculate maximum risk value from all enabled models to dynamically adjust y-axis
         let maxRisk = 10; // Default minimum of 10%
