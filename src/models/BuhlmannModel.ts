@@ -66,25 +66,25 @@ export class BuhlmannModel extends DecompressionModel {
     41.20, 55.19, 70.69, 90.34, 115.29, 147.42, 188.24, 240.03
   ];
 
-  // Buhlmann ZHL-16C M-value coefficients for nitrogen
+  // Buhlmann ZHL-16C M-value coefficients for nitrogen (from Subsurface deco.cpp reference)
   private readonly NITROGEN_M_VALUES_A = [
-    1.2599, 1.0000, 0.8618, 0.7562, 0.6667, 0.5933, 0.5282, 0.4710,
-    0.4187, 0.3798, 0.3497, 0.3223, 0.2971, 0.2737, 0.2523, 0.2327
+    1.1696, 1.0000, 0.8618, 0.7562, 0.6200, 0.5043, 0.4410, 0.4000,
+    0.3750, 0.3500, 0.3295, 0.3065, 0.2835, 0.2610, 0.2480, 0.2327
   ];
 
   private readonly NITROGEN_M_VALUES_B = [
-    0.5050, 0.6514, 0.7222, 0.7825, 0.8126, 0.8434, 0.8693, 0.8910,
+    0.5578, 0.6514, 0.7222, 0.7825, 0.8126, 0.8434, 0.8693, 0.8910,
     0.9092, 0.9222, 0.9319, 0.9403, 0.9477, 0.9544, 0.9602, 0.9653
   ];
 
-  // Buhlmann ZHL-16C M-value coefficients for helium
+  // Buhlmann ZHL-16C M-value coefficients for helium (from Subsurface deco.cpp reference)
   private readonly HELIUM_M_VALUES_A = [
-    1.7424, 1.3830, 1.1919, 1.0458, 0.9220, 0.8205, 0.7305, 0.6502,
+    1.6189, 1.3830, 1.1919, 1.0458, 0.9220, 0.8205, 0.7305, 0.6502,
     0.5950, 0.5545, 0.5333, 0.5189, 0.5181, 0.5176, 0.5172, 0.5119
   ];
 
   private readonly HELIUM_M_VALUES_B = [
-    0.4245, 0.5747, 0.6527, 0.7223, 0.7582, 0.7957, 0.8279, 0.8553,
+    0.4770, 0.5747, 0.6527, 0.7223, 0.7582, 0.7957, 0.8279, 0.8553,
     0.8757, 0.8903, 0.8997, 0.9073, 0.9122, 0.9171, 0.9217, 0.9267
   ];
 
@@ -107,6 +107,11 @@ export class BuhlmannModel extends DecompressionModel {
   protected initializeTissueCompartments(): void {
     this.tissueCompartments = [];
     this.buhlmannCompartments = [];
+    
+    // Ensure buhlmannCompartments is initialized even if it was undefined
+    if (!this.buhlmannCompartments) {
+      this.buhlmannCompartments = [];
+    }
 
     // Use hardcoded arrays to avoid initialization issues
     const nitrogenTimes = [
@@ -120,22 +125,22 @@ export class BuhlmannModel extends DecompressionModel {
     ];
 
     const nitrogenAValues = [
-      1.2599, 1.0000, 0.8618, 0.7562, 0.6667, 0.5933, 0.5282, 0.4710,
-      0.4187, 0.3798, 0.3497, 0.3223, 0.2971, 0.2737, 0.2523, 0.2327
+      1.1696, 1.0000, 0.8618, 0.7562, 0.6200, 0.5043, 0.4410, 0.4000,
+      0.3750, 0.3500, 0.3295, 0.3065, 0.2835, 0.2610, 0.2480, 0.2327
     ];
 
     const nitrogenBValues = [
-      0.5050, 0.6514, 0.7222, 0.7825, 0.8126, 0.8434, 0.8693, 0.8910,
+      0.5578, 0.6514, 0.7222, 0.7825, 0.8126, 0.8434, 0.8693, 0.8910,
       0.9092, 0.9222, 0.9319, 0.9403, 0.9477, 0.9544, 0.9602, 0.9653
     ];
 
     const heliumAValues = [
-      1.7424, 1.3830, 1.1919, 1.0458, 0.9220, 0.8205, 0.7305, 0.6502,
+      1.6189, 1.3830, 1.1919, 1.0458, 0.9220, 0.8205, 0.7305, 0.6502,
       0.5950, 0.5545, 0.5333, 0.5189, 0.5181, 0.5176, 0.5172, 0.5119
     ];
 
     const heliumBValues = [
-      0.4245, 0.5747, 0.6527, 0.7223, 0.7582, 0.7957, 0.8279, 0.8553,
+      0.4770, 0.5747, 0.6527, 0.7223, 0.7582, 0.7957, 0.8279, 0.8553,
       0.8757, 0.8903, 0.8997, 0.9073, 0.9122, 0.9171, 0.9217, 0.9267
     ];
 
@@ -206,19 +211,8 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   public calculateCeiling(): number {
-    let maxCeiling = 0;
-
-    // Calculate the first stop depth if not already done
-    if (this.firstStopDepth === 0) {
-      this.firstStopDepth = this.calculateFirstStopDepth();
-    }
-
-    for (const compartment of this.buhlmannCompartments) {
-      const ceiling = this.calculateCompartmentCeiling(compartment);
-      maxCeiling = Math.max(maxCeiling, ceiling);
-    }
-
-    return Math.max(0, maxCeiling);
+    // Use iterative ceiling calculation following Subsurface reference implementation
+    return this.calculateCeilingIterative(0.3);
   }
 
   public calculateDecompressionStops(): DecompressionStop[] {
@@ -433,51 +427,73 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   private calculateFirstStopDepth(): number {
-    // Calculate the deepest stop required by any compartment using full M-values
-    let maxStopDepth = 0;
-
-    for (const compartment of this.buhlmannCompartments) {
-      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
-      const a = compartment.combinedMValueA;
-      const b = compartment.combinedMValueB;
+    // Calculate first stop depth by finding the deepest depth where tissue tolerance fails
+    // This is done iteratively during decompression planning
+    let testDepth = 0;
+    const maxDepth = 200;
+    
+    while (testDepth <= maxDepth) {
+      // Test if this depth is safe without gradient factors (full M-value)
+      const tolerance = this.calculateTissueTolerance(testDepth, false);
       
-      // Calculate depth where tissue pressure equals M-value (no gradient factor)
-      const fullMValuePressure = (totalLoading - b) / a;
-      const stopDepth = (fullMValuePressure - this.surfacePressure) / 0.1;
+      if (tolerance !== null) {
+        // Found the first safe depth using full M-values
+        return Math.max(0, Math.ceil(testDepth / 3) * 3); // Round up to 3m intervals
+      }
       
-      maxStopDepth = Math.max(maxStopDepth, stopDepth);
+      testDepth += 0.3; // Small increment for accuracy
     }
-
-    return Math.max(0, Math.ceil(maxStopDepth / 3) * 3); // Round up to 3m intervals
+    
+    return maxDepth; // Conservative fallback
   }
 
   private calculateStopTime(depth: number): number {
-    // Simplified stop time calculation
-    // In a full implementation, this would involve iterative calculation
-    // to determine the time needed for tissues to off-gas sufficiently
+    // Use binary search method following Subsurface reference implementation
+    const nextDepth = depth - 3; // Next stop is 3m shallower
+    return this.calculateMinimumStopTime(depth, Math.max(0, nextDepth));
+  }
+
+  /**
+   * Calculate tissue tolerance for a given depth (used by ceiling calculations)
+   * This follows the Subsurface reference implementation approach
+   * @param depth Depth in meters to test
+   * @param includeModelSpecificLogic Whether to include gradient factors
+   * @returns Maximum tolerable pressure in bar, or null if depth is unsafe
+   */
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    const ambientPressure = this.calculateAmbientPressure(depth);
+    let maxTolerance = 0;
     
-    const ceiling = this.calculateCeiling();
-    if (depth > ceiling) {
-      return 0; // No stop needed at this depth - it's above the ceiling
+    // Ensure compartments are initialized
+    if (!this.buhlmannCompartments || this.buhlmannCompartments.length === 0) {
+      this.initializeTissueCompartments();
     }
-
-    // Basic stop time estimation based on supersaturation
-    let maxSupersaturation = 0;
-    for (let i = 1; i <= 16; i++) {
-      const supersaturation = this.calculateSupersaturation(i);
-      maxSupersaturation = Math.max(maxSupersaturation, supersaturation);
+    
+    for (const compartment of this.buhlmannCompartments) {
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      
+      // Calculate M-value at test depth
+      const mValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
+      
+      let allowableTolerance = mValue;
+      
+      if (includeModelSpecificLogic) {
+        // Apply gradient factors following reference implementation
+        const gradientFactor = this.getGradientFactorAtDepth(depth);
+        // GF formula: allowable = ambient + GF * (M-value - ambient)
+        allowableTolerance = ambientPressure + (gradientFactor / 100) * (mValue - ambientPressure);
+      }
+      
+      // The tissue tolerance is the maximum pressure this compartment can handle
+      // If current loading exceeds allowable tolerance, this depth is unsafe
+      if (totalLoading > allowableTolerance) {
+        return null; // Unsafe depth
+      }
+      
+      maxTolerance = Math.max(maxTolerance, allowableTolerance);
     }
-
-    // Estimate stop time based on supersaturation level
-    if (maxSupersaturation > 120) {
-      return Math.min(30, Math.max(3, Math.floor(maxSupersaturation / 10)));
-    } else if (maxSupersaturation > 105) {
-      return Math.min(15, Math.max(2, Math.floor(maxSupersaturation / 15)));
-    } else if (maxSupersaturation > 100) {
-      return Math.min(5, Math.max(1, Math.floor(maxSupersaturation / 20)));
-    }
-
-    return 1; // Minimum stop time
+    
+    return maxTolerance;
   }
 
   /**
@@ -498,13 +514,12 @@ export class BuhlmannModel extends DecompressionModel {
       // Calculate M-value at current depth
       const mValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
       
-      // Apply gradient factors
+      // Apply gradient factors correctly
       const effectiveGradientFactor = this.getGradientFactorAtDepth(this.currentDiveState.depth);
-      const allowableSupersaturation = mValue * (effectiveGradientFactor / 100);
+      const allowablePressure = ambientPressure + (effectiveGradientFactor / 100) * (mValue - ambientPressure);
       
       // Calculate supersaturation ratio
-      const supersaturation = Math.max(0, totalLoading - ambientPressure);
-      const supersaturationRatio = supersaturation / allowableSupersaturation;
+      const supersaturationRatio = totalLoading / allowablePressure;
       
       maxSupersaturationRatio = Math.max(maxSupersaturationRatio, supersaturationRatio);
     }
@@ -513,5 +528,24 @@ export class BuhlmannModel extends DecompressionModel {
     const riskPercentage = Math.min(100, maxSupersaturationRatio * maxSupersaturationRatio * 50);
     
     return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+  }
+
+  /**
+   * Override to update Buhlmann-specific state after tissue loading changes
+   */
+  protected postProcessTissueState(): void {
+    // Ensure buhlmannCompartments array is properly synchronized with tissueCompartments
+    if (this.buhlmannCompartments.length !== this.tissueCompartments.length) {
+      // Re-sync the arrays by clearing and rebuilding buhlmannCompartments
+      this.buhlmannCompartments = [];
+      for (let i = 0; i < this.tissueCompartments.length; i++) {
+        this.buhlmannCompartments.push(this.tissueCompartments[i] as BuhlmannCompartment);
+      }
+    }
+    
+    // Update combined M-values for all compartments after tissue state is copied
+    for (const compartment of this.buhlmannCompartments) {
+      this.updateCombinedMValues(compartment);
+    }
   }
 }

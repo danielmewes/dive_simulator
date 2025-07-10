@@ -34,6 +34,10 @@ interface VpmBCompartment extends TissueCompartment {
   maxCrushingPressure: number;
   /** Onset of impermeability pressure */
   onsetOfImpermeability: number;
+  /** Maximum bottom ceiling pressure (for Boyle's law compensation) */
+  maxBottomCeilingPressure: number;
+  /** Nuclear regeneration factor */
+  nuclearRegenerationFactor: number;
 }
 
 interface BubbleParameters {
@@ -55,10 +59,19 @@ export class VpmBModel extends DecompressionModel {
   private bubbleParameters!: BubbleParameters;
   private conservatismLevel!: number; // 0-5, where 0 is least conservative
 
-  // VPM-B specific constants
-  private readonly WATER_VAPOR_PRESSURE = 0.0627; // bar at 37°C
-  private readonly SURFACE_TENSION_GRADIENT = 0.0179; // N/m/bar
-  private readonly PRESSURE_OTHER_GASES = 0.0526; // bar (CO2, etc.)
+  // VPM-B specific constants (from Subsurface deco.cpp reference implementation)
+  private readonly WATER_VAPOR_PRESSURE = 0.0493; // bar at 37°C (VPM-B uses 0.0493, Buhlmann uses 0.0627)
+  private readonly SURFACE_TENSION_GAMMA = 0.18137175; // N/msw (Nucleons surface tension constant)
+  private readonly SKIN_COMPRESSION_GAMMA_C = 2.6040525; // N/msw (Skin compression gammaC)
+  private readonly PRESSURE_OTHER_GASES = 0.1359888; // bar (Always present pressure of other gasses in tissues)
+  private readonly CRIT_RADIUS_N2 = 0.55; // Critical radius of N2 nucleon (microns)
+  private readonly CRIT_RADIUS_HE = 0.45; // Critical radius of He nucleon (microns)
+  private readonly CRIT_VOLUME_LAMBDA = 199.58; // Constant corresponding to critical gas volume (bar * min)
+  private readonly GRADIENT_OF_IMPERM = 8.30865; // Gradient after which bubbles become impermeable
+  private readonly REGENERATION_TIME = 20160.0; // Time needed for bubble to regenerate to start radius (min)
+  
+  // VPM-B conservatism level multipliers (from deco.cpp)
+  private readonly CONSERVATISM_MULTIPLIERS = [1.0, 1.05, 1.12, 1.22, 1.35]; // Levels 0-4
 
   // Standard VPM-B compartment half-times (minutes)
   private readonly NITROGEN_HALF_TIMES = [
@@ -73,13 +86,13 @@ export class VpmBModel extends DecompressionModel {
 
   constructor(conservatismLevel: number = 3) {
     super();
-    this.conservatismLevel = Math.max(0, Math.min(5, conservatismLevel));
+    this.conservatismLevel = Math.max(0, Math.min(4, conservatismLevel)); // 0-4 levels in reference
     
     this.bubbleParameters = {
-      surfaceTension: 0.0179, // N/m
-      skinCompressionGamma: 2.0,
-      criticalVolumeLambda: 750.0,
-      regenerationTimeConstant: 20160.0 // 14 days in minutes
+      surfaceTension: this.SURFACE_TENSION_GAMMA, // N/msw
+      skinCompressionGamma: this.SKIN_COMPRESSION_GAMMA_C,
+      criticalVolumeLambda: this.CRIT_VOLUME_LAMBDA,
+      regenerationTimeConstant: this.REGENERATION_TIME
     };
 
     // Re-initialize compartments now that all properties are set
@@ -124,6 +137,8 @@ export class VpmBModel extends DecompressionModel {
         adjustedCriticalRadius: 0,
         maxCrushingPressure: 0,
         onsetOfImpermeability: 0,
+        maxBottomCeilingPressure: 0,
+        nuclearRegenerationFactor: 1.0,
         get totalLoading() {
           return this.nitrogenLoading + this.heliumLoading;
         }
@@ -141,6 +156,9 @@ export class VpmBModel extends DecompressionModel {
   public updateTissueLoadings(timeStep: number): void {
     const nitrogenPP = this.calculatePartialPressure(this.currentDiveState.gasMix.nitrogen);
     const heliumPP = this.calculatePartialPressure(this.currentDiveState.gasMix.helium);
+
+    // Apply Boyle's law compensation for multilevel dives
+    this.applyBoylesLawCompensation();
 
     for (let i = 0; i < this.tissueCompartments.length; i++) {
       const compartment = this.tissueCompartments[i]!;
@@ -168,18 +186,15 @@ export class VpmBModel extends DecompressionModel {
 
       // Update VPM-B specific parameters
       this.updateBubbleDynamics(vpmBCompartment, timeStep);
+      
+      // Apply nuclear regeneration
+      this.applyNuclearRegeneration(vpmBCompartment, timeStep);
     }
   }
 
   public calculateCeiling(): number {
-    let maxCeiling = 0;
-
-    for (const vpmBCompartment of this.vpmBCompartments) {
-      const ceiling = this.calculateCompartmentCeiling(vpmBCompartment);
-      maxCeiling = Math.max(maxCeiling, ceiling);
-    }
-
-    return Math.max(0, maxCeiling);
+    // Use iterative ceiling calculation following Subsurface reference implementation
+    return this.calculateCeilingIterative(0.3);
   }
 
   public calculateDecompressionStops(): DecompressionStop[] {
@@ -217,6 +232,7 @@ export class VpmBModel extends DecompressionModel {
   public getModelName(): string {
     return `VPM-B+${this.conservatismLevel}`;
   }
+
 
   /**
    * Calculate the number of microbubbles for a given compartment
@@ -268,29 +284,51 @@ export class VpmBModel extends DecompressionModel {
   }
 
   private calculateInitialCriticalRadius(compartmentNumber: number): number {
-    // VPM-B initial critical radius values in nanometers
-    const initialRadii = [
-      1.2599, 1.0000, 0.8618, 0.7562, 0.6667, 0.5933, 0.5282, 0.4710,
-      0.4187, 0.3798, 0.3497, 0.3223, 0.2971, 0.2737, 0.2523, 0.2327
-    ];
+    // VPM-B uses gas-specific critical radius values (from Subsurface deco.cpp reference)
+    // Start with nitrogen critical radius as baseline during initialization
+    return this.CRIT_RADIUS_N2; // N2 critical radius in microns
+  }
+
+  /**
+   * Calculate dynamic critical radius based on actual gas composition in compartment
+   * This properly accounts for helium when present
+   */
+  private calculateDynamicCriticalRadius(compartment: VpmBCompartment): number {
+    const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
     
-    const radius = initialRadii[compartmentNumber - 1];
-    if (radius === undefined) {
-      throw new Error(`Invalid compartment number: ${compartmentNumber}`);
+    if (totalInertGas <= 0) {
+      // No inert gas loading, default to nitrogen
+      return this.CRIT_RADIUS_N2;
     }
     
-    return radius * 1000; // Convert to nm
+    // Calculate weighted average based on gas composition
+    const nitrogenFraction = compartment.nitrogenLoading / totalInertGas;
+    const heliumFraction = compartment.heliumLoading / totalInertGas;
+    
+    const weightedCriticalRadius = 
+      (nitrogenFraction * this.CRIT_RADIUS_N2) + 
+      (heliumFraction * this.CRIT_RADIUS_HE);
+    
+    return weightedCriticalRadius;
   }
 
   private updateBubbleDynamics(compartment: VpmBCompartment, timeStep: number): void {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     const currentPressure = this.currentDiveState.ambientPressure;
 
+    // Get the dynamic critical radius based on current gas composition
+    const currentDynamicRadius = this.calculateDynamicCriticalRadius(compartment);
+
     // Update maximum crushing pressure
     compartment.maxCrushingPressure = Math.max(
       compartment.maxCrushingPressure,
       currentPressure
     );
+
+    // Initialize adjustedCriticalRadius if not set, or update base reference
+    if (!compartment.adjustedCriticalRadius || compartment.adjustedCriticalRadius === compartment.initialCriticalRadius) {
+      compartment.adjustedCriticalRadius = currentDynamicRadius;
+    }
 
     // Ensure critical radius is never zero to prevent division by zero
     compartment.adjustedCriticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001);
@@ -306,19 +344,19 @@ export class VpmBModel extends DecompressionModel {
       const radiusGrowthFactor = 1.0 + (supersaturation * 0.1); // Simplified growth model
       compartment.adjustedCriticalRadius = Math.min(
         compartment.adjustedCriticalRadius * radiusGrowthFactor,
-        compartment.initialCriticalRadius * 2.0 // Limit growth
+        currentDynamicRadius * 2.0 // Limit growth relative to dynamic radius
       );
     } else {
-      // Undersaturation: bubbles shrink back toward initial size
+      // Undersaturation: bubbles shrink back toward dynamic critical radius based on gas composition
       const shrinkageRate = Math.min(0.99, timeStep / this.bubbleParameters.regenerationTimeConstant); // Limit shrinkage rate
       compartment.adjustedCriticalRadius = compartment.adjustedCriticalRadius * (1.0 - shrinkageRate) +
-        compartment.initialCriticalRadius * shrinkageRate;
+        currentDynamicRadius * shrinkageRate;
     }
 
-    // Ensure critical radius stays within reasonable bounds
+    // Ensure critical radius stays within reasonable bounds relative to dynamic radius
     compartment.adjustedCriticalRadius = Math.max(
-      Math.min(compartment.adjustedCriticalRadius, compartment.initialCriticalRadius * 10.0),
-      compartment.initialCriticalRadius * 0.1
+      Math.min(compartment.adjustedCriticalRadius, currentDynamicRadius * 10.0),
+      currentDynamicRadius * 0.1
     );
   }
 
@@ -341,18 +379,38 @@ export class VpmBModel extends DecompressionModel {
   }
 
   private calculateAllowableSupersaturation(compartment: VpmBCompartment): number {
-    // VPM-B allowable supersaturation based on bubble mechanics
+    // VPM-B allowable supersaturation based on bubble mechanics with crushing pressure
     const surfaceTension = this.bubbleParameters.surfaceTension;
-    const criticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001); // Prevent division by zero
     
-    // Basic VPM-B supersaturation limit
-    const bubblePressure = (2.0 * surfaceTension) / criticalRadius;
+    // Use dynamic critical radius that accounts for gas composition
+    const baseCriticalRadius = this.calculateDynamicCriticalRadius(compartment);
+    const criticalRadius = Math.max(compartment.adjustedCriticalRadius || baseCriticalRadius, 0.001); // Prevent division by zero
     
-    // Apply conservatism adjustment
-    // Higher conservatism levels reduce allowable supersaturation (more conservative)
-    const conservatismFactor = 1.0 - (this.conservatismLevel * 0.1);
+    // Basic VPM-B supersaturation limit from surface tension
+    // Convert critical radius from microns to meters for proper units
+    const criticalRadiusMeters = criticalRadius * 1e-6; // microns to meters
+    const bubblePressure = (2.0 * surfaceTension) / criticalRadiusMeters;
     
-    return bubblePressure * conservatismFactor;
+    // Account for crushing pressure effects on bubble formation
+    const crushingPressureEffect = Math.max(0, 
+      compartment.maxCrushingPressure - this.currentDiveState.ambientPressure);
+    
+    // Account for maximum bottom ceiling pressure (Boyle's law compensation)
+    const boylesLawCompensation = Math.max(0, 
+      compartment.maxBottomCeilingPressure - this.surfacePressure);
+    
+    // Combine all effects
+    let allowableSupersaturation = bubblePressure + crushingPressureEffect + boylesLawCompensation;
+    
+    // Apply conservatism adjustment using reference implementation multipliers
+    // Higher conservatism levels multiply the critical radius, making bubbles less likely to form
+    const conservatismMultiplier = this.CONSERVATISM_MULTIPLIERS[this.conservatismLevel] || 1.0;
+    allowableSupersaturation /= conservatismMultiplier;
+    
+    // Apply nuclear regeneration factor
+    allowableSupersaturation *= compartment.nuclearRegenerationFactor;
+    
+    return Math.max(0.01, allowableSupersaturation); // Minimum threshold
   }
 
   private calculateBubbleRadius(excessPressure: number, criticalRadius: number): number {
@@ -360,24 +418,124 @@ export class VpmBModel extends DecompressionModel {
     const surfaceTension = this.bubbleParameters.surfaceTension;
     const safeCriticalRadius = Math.max(criticalRadius, 0.001); // Prevent division by zero
     
+    // Convert critical radius from microns to meters for proper units
+    const criticalRadiusMeters = safeCriticalRadius * 1e-6;
+    
     // Simplified bubble radius calculation
-    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / safeCriticalRadius);
+    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / criticalRadiusMeters);
     return safeCriticalRadius * Math.pow(Math.max(pressureRatio, 0.001), 1.0 / 3.0);
   }
 
   private calculateStopTime(depth: number): number {
-    // Simplified stop time calculation
-    // In a full implementation, this would involve iterative calculation
-    // to determine the time needed for tissues to off-gas sufficiently
-    
-    const ceiling = this.calculateCeiling();
-    if (depth > ceiling) {
-      return 0; // No stop needed at this depth - it's above the ceiling
-    }
+    // Use binary search method following Subsurface reference implementation
+    const nextDepth = depth - 3; // Next stop is 3m shallower
+    return this.calculateMinimumStopTime(depth, Math.max(0, nextDepth));
+  }
 
-    // Basic stop time estimation (would be more complex in real implementation)
-    const depthDifference = depth - ceiling;
-    return Math.max(1, Math.min(30, depthDifference * 2)); // 1-30 minutes
+  /**
+   * Apply Boyle's law compensation for multilevel dives
+   * This tracks maximum bottom ceiling pressure during ascent
+   */
+  private applyBoylesLawCompensation(): void {
+    const currentPressure = this.currentDiveState.ambientPressure;
+    
+    for (const compartment of this.vpmBCompartments) {
+      // Calculate current ceiling pressure for this compartment
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      const allowableSupersaturation = this.calculateAllowableSupersaturation(compartment);
+      const ceilingPressure = totalLoading - allowableSupersaturation;
+      
+      // Update maximum bottom ceiling pressure
+      compartment.maxBottomCeilingPressure = Math.max(
+        compartment.maxBottomCeilingPressure,
+        ceilingPressure
+      );
+      
+      // Apply crushing pressure effects during descent
+      if (currentPressure > compartment.maxCrushingPressure) {
+        this.calculateCrushingPressure(compartment, currentPressure);
+      }
+    }
+  }
+
+  /**
+   * Calculate crushing pressure effects on bubble nuclei
+   * @param compartment VPM-B compartment
+   * @param pressure Current ambient pressure
+   */
+  private calculateCrushingPressure(compartment: VpmBCompartment, pressure: number): void {
+    // Update maximum crushing pressure
+    compartment.maxCrushingPressure = Math.max(compartment.maxCrushingPressure, pressure);
+    
+    // Calculate crushing effect on critical radius
+    const pressureRatio = pressure / this.surfacePressure;
+    const crushingFactor = 1.0 / Math.pow(pressureRatio, 1.0 / 3.0);
+    
+    // Apply crushing to adjusted critical radius
+    compartment.adjustedCriticalRadius = Math.max(
+      compartment.adjustedCriticalRadius * crushingFactor,
+      compartment.initialCriticalRadius * 0.1 // Minimum size limit
+    );
+  }
+
+  /**
+   * Apply nuclear regeneration to restore bubble nuclei over time
+   * @param compartment VPM-B compartment
+   * @param timeStep Time step in minutes
+   */
+  private applyNuclearRegeneration(compartment: VpmBCompartment, timeStep: number): void {
+    // Nuclear regeneration rate - nuclei gradually return to gas-composition-specific size
+    const regenerationRate = timeStep / this.bubbleParameters.regenerationTimeConstant;
+    
+    // Calculate target radius based on current gas composition
+    const dynamicRadius = this.calculateDynamicCriticalRadius(compartment);
+    const targetRadius = dynamicRadius * compartment.nuclearRegenerationFactor;
+    const currentRadius = compartment.adjustedCriticalRadius;
+    
+    // Move towards target radius
+    compartment.adjustedCriticalRadius = currentRadius + 
+      (targetRadius - currentRadius) * regenerationRate;
+      
+    // Ensure radius stays within bounds relative to dynamic radius
+    compartment.adjustedCriticalRadius = Math.max(
+      Math.min(compartment.adjustedCriticalRadius, dynamicRadius * 2.0),
+      dynamicRadius * 0.1
+    );
+  }
+
+  /**
+   * Calculate tissue tolerance for a given depth (used by ceiling calculations)
+   * This follows the VPM-B reference implementation approach
+   * @param depth Depth in meters to test
+   * @param includeModelSpecificLogic Whether to include VPM-B bubble mechanics
+   * @returns Maximum tolerable pressure in bar, or null if depth is unsafe
+   */
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    const ambientPressure = this.calculateAmbientPressure(depth);
+    
+    for (const compartment of this.vpmBCompartments) {
+      const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
+      
+      let allowablePressure: number;
+      
+      if (includeModelSpecificLogic) {
+        // Apply VPM-B bubble mechanics
+        const allowableSupersaturation = this.calculateAllowableSupersaturation(compartment);
+        // Maximum pressure this tissue can handle = ambient + allowable supersaturation
+        allowablePressure = ambientPressure + allowableSupersaturation;
+      } else {
+        // Use basic limit without bubble mechanics (no supersaturation allowed)
+        allowablePressure = ambientPressure;
+      }
+      
+      // If current tissue loading exceeds what's allowable at this depth, it's unsafe
+      if (totalLoading > allowablePressure) {
+        return null; // Unsafe depth
+      }
+    }
+    
+    // If we get here, all compartments are safe at this depth
+    return ambientPressure;
   }
 
   /**

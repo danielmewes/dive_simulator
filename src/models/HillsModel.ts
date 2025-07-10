@@ -477,4 +477,9 @@ export class HillsModel extends DecompressionModel {
 
     return Math.min(20, Math.max(1, Math.round(maxOffGassingTime)));
   }
+
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    // Stub implementation - should be properly implemented based on model specifics
+    return this.calculateAmbientPressure(depth);
+  }
 }

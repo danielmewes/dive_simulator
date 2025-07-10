@@ -1296,18 +1296,16 @@ class DiveSimulator {
         
         // Copy current state from old model to new model
         if (oldModel) {
-            const currentState = oldModel.getDiveState();
-            this.models[modelKey].updateDiveState(currentState);
+            // Use the safe tissue state copy method instead of direct assignment
+            this.models[modelKey].copyTissueStateFrom(oldModel);
             
-            // Copy tissue loadings if possible
+            // Copy any model-specific properties that aren't handled by the base method
             const oldCompartments = oldModel.getTissueCompartments();
             const newCompartments = this.models[modelKey].getTissueCompartments();
             
             if (oldCompartments && newCompartments && oldCompartments.length === newCompartments.length) {
                 for (let i = 0; i < oldCompartments.length; i++) {
-                    newCompartments[i].nitrogenLoading = oldCompartments[i].nitrogenLoading;
-                    newCompartments[i].heliumLoading = oldCompartments[i].heliumLoading;
-                    // Copy any additional properties for specific models
+                    // Copy any additional properties for specific models (like VPM-B crushing pressure)
                     if (oldCompartments[i].maxCrushingPressure !== undefined) {
                         newCompartments[i].maxCrushingPressure = oldCompartments[i].maxCrushingPressure;
                     }

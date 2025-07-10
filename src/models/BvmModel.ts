@@ -460,4 +460,8 @@ export class BvmModel extends DecompressionModel {
       compartment.bubbleResolutionRate = 0.0;
     });
   }
+
+  public calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null {
+    return this.calculateAmbientPressure(depth);
+  }
 }
