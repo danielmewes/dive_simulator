@@ -59,15 +59,19 @@ export class VpmBModel extends DecompressionModel {
   private bubbleParameters!: BubbleParameters;
   private conservatismLevel!: number; // 0-5, where 0 is least conservative
 
-  // VPM-B specific constants (from Subsurface reference implementation)
-  private readonly WATER_VAPOR_PRESSURE = 0.0627; // bar at 37°C
-  private readonly SURFACE_TENSION_GRADIENT = 0.0179; // N/m/bar
-  private readonly PRESSURE_OTHER_GASES = 0.0526; // bar (CO2, etc.)
-  private readonly BUBBLE_FORMATION_COEFFICIENT = 0.85; // From RGBM implementation
-  private readonly MICROBUBBLE_SURVIVAL_TIME = 120; // minutes
-  private readonly STANDARD_ATMOSPHERE = 1.013; // bar
-  private readonly BODY_TEMPERATURE = 37.0; // °C
-  private readonly PRESSURE_GRADIENT = 0.1; // bar per meter
+  // VPM-B specific constants (from Subsurface deco.cpp reference implementation)
+  private readonly WATER_VAPOR_PRESSURE = 0.0493; // bar at 37°C (VPM-B uses 0.0493, Buhlmann uses 0.0627)
+  private readonly SURFACE_TENSION_GAMMA = 0.18137175; // N/msw (Nucleons surface tension constant)
+  private readonly SKIN_COMPRESSION_GAMMA_C = 2.6040525; // N/msw (Skin compression gammaC)
+  private readonly PRESSURE_OTHER_GASES = 0.1359888; // bar (Always present pressure of other gasses in tissues)
+  private readonly CRIT_RADIUS_N2 = 0.55; // Critical radius of N2 nucleon (microns)
+  private readonly CRIT_RADIUS_HE = 0.45; // Critical radius of He nucleon (microns)
+  private readonly CRIT_VOLUME_LAMBDA = 199.58; // Constant corresponding to critical gas volume (bar * min)
+  private readonly GRADIENT_OF_IMPERM = 8.30865; // Gradient after which bubbles become impermeable
+  private readonly REGENERATION_TIME = 20160.0; // Time needed for bubble to regenerate to start radius (min)
+  
+  // VPM-B conservatism level multipliers (from deco.cpp)
+  private readonly CONSERVATISM_MULTIPLIERS = [1.0, 1.05, 1.12, 1.22, 1.35]; // Levels 0-4
 
   // Standard VPM-B compartment half-times (minutes)
   private readonly NITROGEN_HALF_TIMES = [
@@ -82,13 +86,13 @@ export class VpmBModel extends DecompressionModel {
 
   constructor(conservatismLevel: number = 3) {
     super();
-    this.conservatismLevel = Math.max(0, Math.min(5, conservatismLevel));
+    this.conservatismLevel = Math.max(0, Math.min(4, conservatismLevel)); // 0-4 levels in reference
     
     this.bubbleParameters = {
-      surfaceTension: this.SURFACE_TENSION_GRADIENT, // N/m
-      skinCompressionGamma: 2.0,
-      criticalVolumeLambda: 750.0,
-      regenerationTimeConstant: 20160.0 // 14 days in minutes
+      surfaceTension: this.SURFACE_TENSION_GAMMA, // N/msw
+      skinCompressionGamma: this.SKIN_COMPRESSION_GAMMA_C,
+      criticalVolumeLambda: this.CRIT_VOLUME_LAMBDA,
+      regenerationTimeConstant: this.REGENERATION_TIME
     };
 
     // Re-initialize compartments now that all properties are set
@@ -280,19 +284,12 @@ export class VpmBModel extends DecompressionModel {
   }
 
   private calculateInitialCriticalRadius(compartmentNumber: number): number {
-    // VPM-B initial critical radius values in micrometers (from Subsurface reference)
-    // These are the actual VPM-B critical radii, not Buhlmann coefficients
-    const initialRadii = [
-      1.2599, 1.0000, 0.8618, 0.7562, 0.6667, 0.5933, 0.5282, 0.4710,
-      0.4187, 0.3798, 0.3497, 0.3223, 0.2971, 0.2737, 0.2523, 0.2327
-    ];
+    // VPM-B uses only TWO critical radius values (from Subsurface deco.cpp reference)
+    // Unlike Buhlmann which has 16 compartment-specific values, VPM-B uses gas-specific radii
     
-    const radius = initialRadii[compartmentNumber - 1];
-    if (radius === undefined) {
-      throw new Error(`Invalid compartment number: ${compartmentNumber}`);
-    }
-    
-    return radius; // Already in micrometers as per VPM-B specification
+    // For simplicity, use nitrogen critical radius as base
+    // In practice, this would be weighted by gas composition in each compartment
+    return this.CRIT_RADIUS_N2; // N2 critical radius in microns
   }
 
   private updateBubbleDynamics(compartment: VpmBCompartment, timeStep: number): void {
@@ -372,10 +369,10 @@ export class VpmBModel extends DecompressionModel {
     // Combine all effects
     let allowableSupersaturation = bubblePressure + crushingPressureEffect + boylesLawCompensation;
     
-    // Apply conservatism adjustment
-    // Higher conservatism levels reduce allowable supersaturation (more conservative)
-    const conservatismFactor = 1.0 - (this.conservatismLevel * 0.1);
-    allowableSupersaturation *= conservatismFactor;
+    // Apply conservatism adjustment using reference implementation multipliers
+    // Higher conservatism levels multiply the critical radius, making bubbles less likely to form
+    const conservatismMultiplier = this.CONSERVATISM_MULTIPLIERS[this.conservatismLevel] || 1.0;
+    allowableSupersaturation /= conservatismMultiplier;
     
     // Apply nuclear regeneration factor
     allowableSupersaturation *= compartment.nuclearRegenerationFactor;

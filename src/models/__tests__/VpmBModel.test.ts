@@ -201,11 +201,11 @@ describe('VpmBModel', () => {
     });
 
     test('should have different conservatism levels', () => {
-      const conservative = new VpmBModel(5);
+      const conservative = new VpmBModel(4); // Max level is now 4
       const moderate = new VpmBModel(3);
       const liberal = new VpmBModel(0);
 
-      expect(conservative.getModelName()).toBe('VPM-B+5');
+      expect(conservative.getModelName()).toBe('VPM-B+4');
       expect(moderate.getModelName()).toBe('VPM-B+3');
       expect(liberal.getModelName()).toBe('VPM-B+0');
     });
