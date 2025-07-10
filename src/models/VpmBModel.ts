@@ -284,23 +284,51 @@ export class VpmBModel extends DecompressionModel {
   }
 
   private calculateInitialCriticalRadius(compartmentNumber: number): number {
-    // VPM-B uses only TWO critical radius values (from Subsurface deco.cpp reference)
-    // Unlike Buhlmann which has 16 compartment-specific values, VPM-B uses gas-specific radii
-    
-    // For simplicity, use nitrogen critical radius as base
-    // In practice, this would be weighted by gas composition in each compartment
+    // VPM-B uses gas-specific critical radius values (from Subsurface deco.cpp reference)
+    // Start with nitrogen critical radius as baseline during initialization
     return this.CRIT_RADIUS_N2; // N2 critical radius in microns
+  }
+
+  /**
+   * Calculate dynamic critical radius based on actual gas composition in compartment
+   * This properly accounts for helium when present
+   */
+  private calculateDynamicCriticalRadius(compartment: VpmBCompartment): number {
+    const totalInertGas = compartment.nitrogenLoading + compartment.heliumLoading;
+    
+    if (totalInertGas <= 0) {
+      // No inert gas loading, default to nitrogen
+      return this.CRIT_RADIUS_N2;
+    }
+    
+    // Calculate weighted average based on gas composition
+    const nitrogenFraction = compartment.nitrogenLoading / totalInertGas;
+    const heliumFraction = compartment.heliumLoading / totalInertGas;
+    
+    const weightedCriticalRadius = 
+      (nitrogenFraction * this.CRIT_RADIUS_N2) + 
+      (heliumFraction * this.CRIT_RADIUS_HE);
+    
+    return weightedCriticalRadius;
   }
 
   private updateBubbleDynamics(compartment: VpmBCompartment, timeStep: number): void {
     const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
     const currentPressure = this.currentDiveState.ambientPressure;
 
+    // Get the dynamic critical radius based on current gas composition
+    const currentDynamicRadius = this.calculateDynamicCriticalRadius(compartment);
+
     // Update maximum crushing pressure
     compartment.maxCrushingPressure = Math.max(
       compartment.maxCrushingPressure,
       currentPressure
     );
+
+    // Initialize adjustedCriticalRadius if not set, or update base reference
+    if (!compartment.adjustedCriticalRadius || compartment.adjustedCriticalRadius === compartment.initialCriticalRadius) {
+      compartment.adjustedCriticalRadius = currentDynamicRadius;
+    }
 
     // Ensure critical radius is never zero to prevent division by zero
     compartment.adjustedCriticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001);
@@ -316,19 +344,19 @@ export class VpmBModel extends DecompressionModel {
       const radiusGrowthFactor = 1.0 + (supersaturation * 0.1); // Simplified growth model
       compartment.adjustedCriticalRadius = Math.min(
         compartment.adjustedCriticalRadius * radiusGrowthFactor,
-        compartment.initialCriticalRadius * 2.0 // Limit growth
+        currentDynamicRadius * 2.0 // Limit growth relative to dynamic radius
       );
     } else {
-      // Undersaturation: bubbles shrink back toward initial size
+      // Undersaturation: bubbles shrink back toward dynamic critical radius based on gas composition
       const shrinkageRate = Math.min(0.99, timeStep / this.bubbleParameters.regenerationTimeConstant); // Limit shrinkage rate
       compartment.adjustedCriticalRadius = compartment.adjustedCriticalRadius * (1.0 - shrinkageRate) +
-        compartment.initialCriticalRadius * shrinkageRate;
+        currentDynamicRadius * shrinkageRate;
     }
 
-    // Ensure critical radius stays within reasonable bounds
+    // Ensure critical radius stays within reasonable bounds relative to dynamic radius
     compartment.adjustedCriticalRadius = Math.max(
-      Math.min(compartment.adjustedCriticalRadius, compartment.initialCriticalRadius * 10.0),
-      compartment.initialCriticalRadius * 0.1
+      Math.min(compartment.adjustedCriticalRadius, currentDynamicRadius * 10.0),
+      currentDynamicRadius * 0.1
     );
   }
 
@@ -353,7 +381,10 @@ export class VpmBModel extends DecompressionModel {
   private calculateAllowableSupersaturation(compartment: VpmBCompartment): number {
     // VPM-B allowable supersaturation based on bubble mechanics with crushing pressure
     const surfaceTension = this.bubbleParameters.surfaceTension;
-    const criticalRadius = Math.max(compartment.adjustedCriticalRadius, 0.001); // Prevent division by zero
+    
+    // Use dynamic critical radius that accounts for gas composition
+    const baseCriticalRadius = this.calculateDynamicCriticalRadius(compartment);
+    const criticalRadius = Math.max(compartment.adjustedCriticalRadius || baseCriticalRadius, 0.001); // Prevent division by zero
     
     // Basic VPM-B supersaturation limit from surface tension
     const bubblePressure = (2.0 * surfaceTension) / criticalRadius;
@@ -448,21 +479,22 @@ export class VpmBModel extends DecompressionModel {
    * @param timeStep Time step in minutes
    */
   private applyNuclearRegeneration(compartment: VpmBCompartment, timeStep: number): void {
-    // Nuclear regeneration rate - nuclei gradually return to original size
+    // Nuclear regeneration rate - nuclei gradually return to gas-composition-specific size
     const regenerationRate = timeStep / this.bubbleParameters.regenerationTimeConstant;
     
-    // Apply regeneration factor
-    const targetRadius = compartment.initialCriticalRadius * compartment.nuclearRegenerationFactor;
+    // Calculate target radius based on current gas composition
+    const dynamicRadius = this.calculateDynamicCriticalRadius(compartment);
+    const targetRadius = dynamicRadius * compartment.nuclearRegenerationFactor;
     const currentRadius = compartment.adjustedCriticalRadius;
     
     // Move towards target radius
     compartment.adjustedCriticalRadius = currentRadius + 
       (targetRadius - currentRadius) * regenerationRate;
       
-    // Ensure radius stays within bounds
+    // Ensure radius stays within bounds relative to dynamic radius
     compartment.adjustedCriticalRadius = Math.max(
-      Math.min(compartment.adjustedCriticalRadius, compartment.initialCriticalRadius * 2.0),
-      compartment.initialCriticalRadius * 0.1
+      Math.min(compartment.adjustedCriticalRadius, dynamicRadius * 2.0),
+      dynamicRadius * 0.1
     );
   }
 
