@@ -211,6 +211,11 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   public calculateCeiling(): number {
+    // Calculate first stop depth if not already done (for consistent gradient factor calculations)
+    if (this.firstStopDepth <= 0) {
+      this.firstStopDepth = this.calculateFirstStopDepth();
+    }
+    
     // Use iterative ceiling calculation following Subsurface reference implementation
     return this.calculateCeilingIterative(0.3);
   }
@@ -420,7 +425,13 @@ export class BuhlmannModel extends DecompressionModel {
       return this.gradientFactors.high;
     }
 
+    // For depths deeper than first stop, use GF-low (most conservative)
+    if (depth >= this.firstStopDepth) {
+      return this.gradientFactors.low;
+    }
+
     // Linear interpolation between GF-low at first stop and GF-high at surface
+    // Only for depths between surface (0) and first stop depth
     const depthRatio = depth / this.firstStopDepth;
     return this.gradientFactors.high + 
            (this.gradientFactors.low - this.gradientFactors.high) * depthRatio;
@@ -547,5 +558,8 @@ export class BuhlmannModel extends DecompressionModel {
     for (const compartment of this.buhlmannCompartments) {
       this.updateCombinedMValues(compartment);
     }
+    
+    // Invalidate firstStopDepth when tissue loadings change to ensure gradient factor consistency
+    this.firstStopDepth = 0;
   }
 }

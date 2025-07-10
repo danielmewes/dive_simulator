@@ -578,5 +578,40 @@ describe('BuhlmannModel', () => {
       // Should require decompression
       expect(buhlmannModel.canAscendDirectly()).toBe(false);
     });
+
+    test('should have monotonically increasing ceiling during ongassing phase', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Start at 40m (ongassing phase)
+      buhlmannModel.updateDiveState({
+        depth: 40,
+        time: 0,
+        gasMix: airMix
+      });
+
+      let prevCeiling = buhlmannModel.calculateCeiling();
+      
+      // Update tissues for 5 minutes, checking ceiling progression
+      for (let i = 1; i <= 30; i++) { // 30 x 10 seconds = 5 minutes
+        buhlmannModel.updateTissueLoadings(10 / 60); // 10 seconds
+        const currentCeiling = buhlmannModel.calculateCeiling();
+        
+        // Ceiling should never decrease during ongassing
+        expect(currentCeiling).toBeGreaterThanOrEqual(prevCeiling);
+        
+        // Ceiling should stay below current depth
+        expect(currentCeiling).toBeLessThan(40);
+        
+        prevCeiling = currentCeiling;
+      }
+      
+      // After 5 minutes, ceiling should be significantly higher than initial
+      const finalCeiling = buhlmannModel.calculateCeiling();
+      expect(finalCeiling).toBeGreaterThan(5); // Should have increased to require decompression
+    });
   });
 });
