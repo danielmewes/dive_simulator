@@ -24,8 +24,6 @@ export { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
 // Export BVM(3) implementation
 export { BvmModel } from './models/BvmModel';
 
-// Export RGBM Folded implementation
-export { RgbmFoldedModel } from './models/RgbmFoldedModel';
 
 // Export TBDM implementation
 export { TbdmModel } from './models/TbdmModel';

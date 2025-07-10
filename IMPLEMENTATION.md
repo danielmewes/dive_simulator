@@ -1,17 +1,16 @@
 # Decompression Model Implementation
 
-This document describes the implementation of multiple decompression algorithms in this library, including VPM-B, Buhlmann ZHL-16C, BVM(3), Hills Thermodynamic, NMRI98, RGBM, TBDM, and VVal-18 models.
+This document describes the implementation of multiple decompression algorithms in this library, including VPM-B, Buhlmann ZHL-16C, BVM(3), Hills Thermodynamic, NMRI98, TBDM, and VVal-18 models.
 
 ## Overview
 
-This library implements eight different decompression models, each representing different theoretical approaches to decompression science:
+This library implements seven different decompression models, each representing different theoretical approaches to decompression science:
 
 - **VPM-B**: Varying Permeability Model with bubble mechanics
 - **Buhlmann ZHL-16C**: Classical dissolved gas model with gradient factors
 - **BVM(3)**: Three-compartment bubble volume model
 - **Hills**: Thermodynamic model with temperature dependencies
 - **NMRI98**: Linear-exponential model with oxygen tracking
-- **RGBM**: Reduced Gradient Bubble Model folded implementation
 - **TBDM**: Tissue-Bubble Diffusion Model
 - **VVal-18**: Navy-tested linear-exponential model
 
@@ -414,65 +413,6 @@ const status = nmri98Model.getModelStatus();
 
 ---
 
-## RGBM Folded Model Implementation: `RgbmFoldedModel`
-
-The `RgbmFoldedModel` class implements the Reduced Gradient Bubble Model folded over a Haldanean dissolved gas model using f-factors.
-
-### Key Features
-
-- **16 tissue compartments** based on Bühlmann ZH-L16C
-- **Microbubble formation tracking** using f-factors
-- **Bubble seed nucleation** and dissolution dynamics
-- **Repetitive dive penalties** and reverse dive considerations
-- **Conservative f-factor modifications** based on bubble dynamics
-
-### Technical Details
-
-**Bubble Parameters**:
-- Base bubble seed count: 1,000 per compartment
-- Bubble formation coefficient: 0.85
-- Microbubble survival time: 120 minutes
-- Conservatism levels: 0-5
-
-**F-Factor Modifications**:
-- Bubble formation reduces allowable supersaturation
-- Microbubble survival affects subsequent dives
-- Reverse dive penalties for rapid ascent
-
-### Unique Methods
-
-```typescript
-// Get RGBM-specific compartment data
-const compartmentData = rgbmModel.getRgbmCompartmentData(compartmentIndex);
-
-// Get total bubble volume
-const bubbleVolume = rgbmModel.getTotalBubbleVolume();
-
-// Set repetitive dive parameters
-rgbmModel.setRepetitiveDiveParams(surfaceInterval, previousDiveProfile);
-
-// Update bubble dynamics
-rgbmModel.updateBubbleDynamics(timeStep);
-```
-
-### Usage Example
-
-```typescript
-import { RgbmFoldedModel } from './models/RgbmFoldedModel';
-
-// Create model with conservatism level 3
-const rgbmModel = new RgbmFoldedModel(3);
-
-// Simulate dive with bubble tracking
-const heliox = { oxygen: 0.21, helium: 0.35, get nitrogen() { return 1 - this.oxygen - this.helium; }};
-rgbmModel.updateDiveState({ depth: 60, time: 0, gasMix: heliox });
-rgbmModel.updateTissueLoadings(20);
-
-const bubbleVolume = rgbmModel.getTotalBubbleVolume();
-const compartmentData = rgbmModel.getRgbmCompartmentData(0);
-```
-
----
 
 ## TBDM Tissue-Bubble Diffusion Model Implementation: `TbdmModel`
 
@@ -614,7 +554,6 @@ const stops = vval18Model.calculateDecompressionStops();
 | BVM(3) | 3 | Bubble volume | Volume-based risk | Probabilistic |
 | Hills | 16 | Thermodynamic | Temperature effects | Thermal nucleation |
 | NMRI98 | 3 | Linear-exponential | Oxygen tracking | Accumulated hazard |
-| RGBM | 16 | Bubble + dissolved | F-factor modifications | Modified M-values |
 | TBDM | 16 | Tissue-bubble diffusion | Perfusion effects | Bubble volume fraction |
 | VVal-18 | 3 | Linear-exponential | Navy validation | Gradient factor based |
 

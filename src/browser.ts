@@ -9,7 +9,6 @@ import { BuhlmannModel } from './models/BuhlmannModel';
 import { VpmBModel } from './models/VpmBModel';
 import { BvmModel } from './models/BvmModel';
 import { VVal18ThalmannModel } from './models/VVal18ThalmannModel';
-import { RgbmFoldedModel } from './models/RgbmFoldedModel';
 import { TbdmModel } from './models/TbdmModel';
 import { Nmri98Model } from './models/Nmri98Model';
 import { HillsModel } from './models/HillsModel';
@@ -30,7 +29,6 @@ window.DecompressionSimulator.BuhlmannModel = BuhlmannModel;
 window.DecompressionSimulator.VpmBModel = VpmBModel;
 window.DecompressionSimulator.BvmModel = BvmModel;
 window.DecompressionSimulator.VVal18ThalmannModel = VVal18ThalmannModel;
-window.DecompressionSimulator.RgbmFoldedModel = RgbmFoldedModel;
 window.DecompressionSimulator.TbdmModel = TbdmModel;
 window.DecompressionSimulator.Nmri98Model = Nmri98Model;
 window.DecompressionSimulator.HillsModel = HillsModel;
@@ -55,10 +53,6 @@ window.DecompressionSimulator.createModel = function(type: string, options: any 
         maxDcsRisk: options.dcsRiskPercent ?? 2.3,
         gradientFactorLow: options.gradientFactorLow ?? 0.30,
         gradientFactorHigh: options.gradientFactorHigh ?? 0.85
-      });
-    case 'rgbm':
-      return new RgbmFoldedModel({
-        conservatism: options.conservatism ?? 2
       });
     case 'tbdm':
       return new TbdmModel({

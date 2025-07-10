@@ -94,7 +94,6 @@
                             <label><input type="checkbox" id="model-vpmb" checked> VPM-B</label>
                             <label><input type="checkbox" id="model-bvm" checked> BVM(3)</label>
                             <label><input type="checkbox" id="model-vval18"> VVal-18 Thalmann</label>
-                            <label><input type="checkbox" id="model-rgbm"> RGBM (folded)</label>
                             <label><input type="checkbox" id="model-tbdm"> TBDM</label>
                             <label><input type="checkbox" id="model-nmri98"> NMRI98 LEM</label>
                             <label><input type="checkbox" id="model-hills"> Thermodynamic (Hills)</label>
@@ -112,7 +111,6 @@
                                     <option value="buhlmann">Bühlmann</option>
                                     <option value="bvm">BVM(3)</option>
                                     <option value="vval18">VVal-18</option>
-                                    <option value="rgbm">RGBM (folded)</option>
                                     <option value="tbdm">TBDM</option>
                                     <option value="nmri98">NMRI98 LEM</option>
                                     <option value="hills">Thermodynamic (Hills)</option>
@@ -195,17 +193,6 @@
                                 </div>
                             </div>
                             
-                            <!-- RGBM Settings -->
-                            <div id="rgbm-settings" class="model-settings-panel" style="display: none;">
-                                <div class="conservatism-control">
-                                    <label for="unified-rgbm-conservatism">Conservatism Level: <span id="unified-rgbm-conservatism-display">2</span></label>
-                                    <input type="range" id="unified-rgbm-conservatism" min="0" max="5" value="2" step="1">
-                                    <div class="conservatism-labels">
-                                        <span>0 (Aggressive)</span>
-                                        <span>5 (Conservative)</span>
-                                    </div>
-                                </div>
-                            </div>
                             
                             <!-- TBDM Settings -->
                             <div id="tbdm-settings" class="model-settings-panel" style="display: none;">
@@ -367,14 +354,6 @@
                                 <span class="status" id="vval18-status">✅ No Deco</span>
                             </div>
                         </div>
-                        <div class="model-result" id="rgbm-result">
-                            <h4 id="rgbm-title">RGBM (folded)</h4>
-                            <div class="result-values">
-                                <span class="ceiling">Ceiling: <strong id="rgbm-ceiling">0m</strong></span>
-                                <span class="tts">TTS: <strong id="rgbm-tts">0 min</strong></span>
-                                <span class="status" id="rgbm-status">✅ No Deco</span>
-                            </div>
-                        </div>
                         <div class="model-result" id="tbdm-result">
                             <h4 id="tbdm-title">TBDM CF:1.0</h4>
                             <div class="result-values">
@@ -421,7 +400,6 @@
                             <option value="vpmb">VPM-B</option>
                             <option value="bvm">BVM(3)</option>
                             <option value="vval18">VVal-18 Thalmann</option>
-                            <option value="rgbm">RGBM (folded)</option>
                             <option value="tbdm">TBDM</option>
                             <option value="nmri98">NMRI98 LEM</option>
                             <option value="hills">Thermodynamic (Hills)</option>
@@ -472,12 +450,6 @@
                         <div class="schedule-column">
                             <h4>VVal-18</h4>
                             <div id="vval18-schedule" class="schedule-list">
-                                <div class="no-deco">No decompression required</div>
-                            </div>
-                        </div>
-                        <div class="schedule-column">
-                            <h4 id="rgbm-schedule-title">RGBM (folded)</h4>
-                            <div id="rgbm-schedule" class="schedule-list">
                                 <div class="no-deco">No decompression required</div>
                             </div>
                         </div>

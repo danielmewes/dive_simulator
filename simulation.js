@@ -12,7 +12,6 @@ class DiveSimulator {
             vpmb: true,
             bvm: true,
             vval18: false,
-            rgbm: false,
             tbdm: false,
             nmri98: false,
             hills: false
@@ -43,7 +42,6 @@ class DiveSimulator {
         // Gradient factor settings
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
-        this.rgbmConservatism = 2;
         
         // TBDM settings
         this.tbdmConservatismFactor = 1.0; // Default TBDM conservatism
@@ -94,9 +92,6 @@ class DiveSimulator {
                 vval18: window.DecompressionSimulator.createModel('vval18', { 
                     gradientFactorLow: this.vval18GradientFactors.low, 
                     gradientFactorHigh: this.vval18GradientFactors.high 
-                }),
-                rgbm: window.DecompressionSimulator.createModel('rgbm', {
-                    conservatism: this.rgbmConservatism
                 }),
                 tbdm: window.DecompressionSimulator.createModel('tbdm', { 
                     conservatismFactor: this.tbdmConservatismFactor 
@@ -280,10 +275,6 @@ class DiveSimulator {
             this.updateModelVisibility();
         });
         
-        document.getElementById('model-rgbm').addEventListener('change', (e) => {
-            this.enabledModels.rgbm = e.target.checked;
-            this.updateModelVisibility();
-        });
         
         document.getElementById('model-tbdm').addEventListener('change', (e) => {
             this.enabledModels.tbdm = e.target.checked;
@@ -414,7 +405,6 @@ class DiveSimulator {
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
             vval18: 'VVal-18 Thalmann',
-            rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
             nmri98: 'NMRI98 LEM',
             hills: 'Thermodynamic (Hills)'
@@ -531,20 +521,6 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#be185d',
                         backgroundColor: 'rgba(190, 24, 93, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'RGBM - Fast Tissues',
-                        data: [],
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'RGBM - Slow Tissues',
-                        data: [],
-                        borderColor: '#7c3aed',
-                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
                         tension: 0.4
                     },
                     {
@@ -699,15 +675,6 @@ class DiveSimulator {
                         yAxisID: 'depth'
                     },
                     {
-                        label: 'Ceiling (RGBM)',
-                        data: [],
-                        borderColor: '#db2777',
-                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
-                        borderDash: [4, 4],
-                        tension: 0.2,
-                        yAxisID: 'depth'
-                    },
-                    {
                         label: 'Ceiling (TBDM)',
                         data: [],
                         borderColor: '#06b6d4',
@@ -820,14 +787,6 @@ class DiveSimulator {
                         data: [],
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.3,
-                        yAxisID: 'risk'
-                    },
-                    {
-                        label: 'RGBM Risk (%)',
-                        data: [],
-                        borderColor: '#db2777',
-                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
                         tension: 0.3,
                         yAxisID: 'risk'
                     },
@@ -1387,24 +1346,6 @@ class DiveSimulator {
         console.log(`BVM maximum DCS risk updated to ${newMaxDcsRisk}%`);
     }
     
-    updateRgbmConservatism(newConservatism) {
-        this.rgbmConservatism = newConservatism;
-        
-        this.updateModelWithNewParameters(
-            'rgbm', 
-            'rgbm', 
-            { 
-                conservatism: newConservatism
-            },
-            '#rgbm-title',
-            `RGBM (folded) - C${newConservatism}`
-        );
-        
-        // Also update the schedule title
-        document.getElementById('rgbm-schedule-title').textContent = `RGBM (folded) - C${newConservatism}`;
-        
-        console.log(`RGBM conservatism updated to ${newConservatism}`);
-    }
     
     updateTbdmConservatism(newConservatism) {
         this.tbdmConservatismFactor = newConservatism;
@@ -1597,7 +1538,6 @@ class DiveSimulator {
         const buhlmannPanel = document.getElementById('buhlmann-settings');
         const vval18Panel = document.getElementById('vval18-settings');
         const bvmPanel = document.getElementById('bvm-settings');
-        const rgbmPanel = document.getElementById('rgbm-settings');
         const tbdmPanel = document.getElementById('tbdm-settings');
         const nmri98Panel = document.getElementById('nmri98-settings');
         const hillsPanel = document.getElementById('hills-settings');
@@ -1609,7 +1549,6 @@ class DiveSimulator {
             buhlmannPanel.style.display = 'none';
             vval18Panel.style.display = 'none';
             bvmPanel.style.display = 'none';
-            rgbmPanel.style.display = 'none';
             tbdmPanel.style.display = 'none';
             nmri98Panel.style.display = 'none';
             hillsPanel.style.display = 'none';
@@ -1627,9 +1566,6 @@ class DiveSimulator {
                     break;
                 case 'vval18':
                     vval18Panel.style.display = 'block';
-                    break;
-                case 'rgbm':
-                    rgbmPanel.style.display = 'block';
                     break;
                 case 'tbdm':
                     tbdmPanel.style.display = 'block';
@@ -1857,11 +1793,7 @@ class DiveSimulator {
         document.getElementById('unified-nmri98-oxygen-tracking').checked = true;
         this.buhlmannGradientFactors = { low: 30, high: 85 };
         this.vval18GradientFactors = { low: 30, high: 85 };
-        this.rgbmConservatism = 2;
         
-        // Reset RGBM controls
-        document.getElementById('unified-rgbm-conservatism').value = 2;
-        document.getElementById('unified-rgbm-conservatism-display').textContent = '2';
         
         // Reset TBDM controls
         document.getElementById('unified-tbdm-conservatism').value = 1.0;
@@ -1885,8 +1817,6 @@ class DiveSimulator {
         document.getElementById('vpmb-title').textContent = 'VPM-B+2';
         document.getElementById('vpmb-schedule-title').textContent = 'VPM-B+2';
         document.getElementById('bvm-result').querySelector('h4').textContent = 'BVM(3)';
-        document.getElementById('rgbm-title').textContent = 'RGBM (folded)';
-        document.getElementById('rgbm-schedule-title').textContent = 'RGBM (folded)';
         document.getElementById('tbdm-title').textContent = 'TBDM CF:1.0';
         document.getElementById('tbdm-schedule-title').textContent = 'TBDM CF:1.0';
         document.getElementById('nmri98-result').querySelector('h4').textContent = 'NMRI98 LEM';
@@ -2079,21 +2009,6 @@ class DiveSimulator {
                     }
                 }
 
-                if (name === 'rgbm' && typeof model.getRgbmCompartmentData === 'function') {
-                    try {
-                        const rgbmData = model.getRgbmCompartmentData(1); // First compartment
-                        historyPoint.models[name].fFactor = rgbmData.fFactor;
-                        historyPoint.models[name].bubbleSeedCount = rgbmData.bubbleSeedCount;
-                        historyPoint.models[name].maxTension = rgbmData.maxTension;
-                        historyPoint.models[name].totalBubbleVolume = model.getTotalBubbleVolume();
-                    } catch (rgbmError) {
-                        console.warn('Error getting RGBM bubble parameters:', rgbmError);
-                        historyPoint.models[name].fFactor = 1.0;
-                        historyPoint.models[name].bubbleSeedCount = 1000;
-                        historyPoint.models[name].maxTension = 1.013;
-                        historyPoint.models[name].totalBubbleVolume = 0;
-                    }
-                }
             } catch (error) {
                 console.warn(`Error recording history for model ${name}:`, error);
                 // Provide default values
@@ -2255,29 +2170,10 @@ class DiveSimulator {
             return h.models.vval18.tissueLoadings[2];
         });
         
-        // RGBM fast tissues (average of first 4 compartments) - Dataset 8
-        this.tissueChart.data.datasets[8].hidden = !this.enabledModels.rgbm;
-        this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
-            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
-            const loadings = h.models.rgbm.tissueLoadings;
-            const fastAvg = loadings.slice(0, 4)
-                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
-            return fastAvg;
-        });
-        
-        // RGBM slow tissues (average of last 4 compartments) - Dataset 9
-        this.tissueChart.data.datasets[9].hidden = !this.enabledModels.rgbm;
-        this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
-            if (!h.models.rgbm || !h.models.rgbm.tissueLoadings) return 1.013;
-            const loadings = h.models.rgbm.tissueLoadings;
-            const slowAvg = loadings.slice(-4)
-                .reduce((sum, load) => sum + (load || 1.013), 0) / 4;
-            return slowAvg;
-        });
         
         // TBDM fast tissues (compartment 1 - Fast: 4 min) - Dataset 10
-        this.tissueChart.data.datasets[10].hidden = !this.enabledModels.tbdm;
-        this.tissueChart.data.datasets[10].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[8].hidden = !this.enabledModels.tbdm;
+        this.tissueChart.data.datasets[8].data = zoomedHistory.map(h => {
             if (!h.models.tbdm || !h.models.tbdm.tissueLoadings || !h.models.tbdm.tissueLoadings[0]) {
                 return 1.013;
             }
@@ -2285,8 +2181,8 @@ class DiveSimulator {
         });
         
         // TBDM slow tissues (compartment 3 - Slow: 240 min) - Dataset 11
-        this.tissueChart.data.datasets[11].hidden = !this.enabledModels.tbdm;
-        this.tissueChart.data.datasets[11].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[9].hidden = !this.enabledModels.tbdm;
+        this.tissueChart.data.datasets[9].data = zoomedHistory.map(h => {
             if (!h.models.tbdm || !h.models.tbdm.tissueLoadings || !h.models.tbdm.tissueLoadings[2]) {
                 return 1.013;
             }
@@ -2294,8 +2190,8 @@ class DiveSimulator {
         });
         
         // NMRI98 fast tissues (compartment 1 - Fast: 8 min) - Dataset 12
-        this.tissueChart.data.datasets[12].hidden = !this.enabledModels.nmri98;
-        this.tissueChart.data.datasets[12].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[10].hidden = !this.enabledModels.nmri98;
+        this.tissueChart.data.datasets[10].data = zoomedHistory.map(h => {
             if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[0]) {
                 return 1.013;
             }
@@ -2303,8 +2199,8 @@ class DiveSimulator {
         });
         
         // NMRI98 slow tissues (compartment 3 - Slow: 120 min) - Dataset 13
-        this.tissueChart.data.datasets[13].hidden = !this.enabledModels.nmri98;
-        this.tissueChart.data.datasets[13].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[11].hidden = !this.enabledModels.nmri98;
+        this.tissueChart.data.datasets[11].data = zoomedHistory.map(h => {
             if (!h.models.nmri98 || !h.models.nmri98.tissueLoadings || !h.models.nmri98.tissueLoadings[2]) {
                 return 1.013;
             }
@@ -2312,8 +2208,8 @@ class DiveSimulator {
         });
         
         // Hills fast tissues (compartment 1 - Fast: 2.5 min) - Dataset 14
-        this.tissueChart.data.datasets[14].hidden = !this.enabledModels.hills;
-        this.tissueChart.data.datasets[14].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[12].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[12].data = zoomedHistory.map(h => {
             if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[0]) {
                 return 1.013;
             }
@@ -2321,8 +2217,8 @@ class DiveSimulator {
         });
         
         // Hills slow tissues (compartment 16 - Slow: 498 min) - Dataset 15
-        this.tissueChart.data.datasets[15].hidden = !this.enabledModels.hills;
-        this.tissueChart.data.datasets[15].data = zoomedHistory.map(h => {
+        this.tissueChart.data.datasets[13].hidden = !this.enabledModels.hills;
+        this.tissueChart.data.datasets[13].data = zoomedHistory.map(h => {
             if (!h.models.hills || !h.models.hills.tissueLoadings || !h.models.hills.tissueLoadings[15]) {
                 return 1.013;
             }
@@ -2330,7 +2226,7 @@ class DiveSimulator {
         });
         
         // Ambient pressure overlay - Dataset 16
-        this.tissueChart.data.datasets[16].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
+        this.tissueChart.data.datasets[14].data = this.diveHistory.map(h => h.ambientPressure || 1.013);
         
         this.tissueChart.update('default');
         
@@ -2362,21 +2258,16 @@ class DiveSimulator {
             h.models.vval18 ? h.models.vval18.ceiling : 0
         );
         
-        // RGBM ceiling - Dataset 5
-        this.profileChart.data.datasets[5].hidden = !this.enabledModels.rgbm;
-        this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
-            h.models.rgbm ? h.models.rgbm.ceiling : 0
-        );
         
         // TBDM ceiling - Dataset 6
-        this.profileChart.data.datasets[6].hidden = !this.enabledModels.tbdm;
-        this.profileChart.data.datasets[6].data = zoomedHistory.map(h => 
+        this.profileChart.data.datasets[5].hidden = !this.enabledModels.tbdm;
+        this.profileChart.data.datasets[5].data = zoomedHistory.map(h => 
             h.models.tbdm ? h.models.tbdm.ceiling : 0
         );
         
         // NMRI98 ceiling - Dataset 7
-        this.profileChart.data.datasets[7].hidden = !this.enabledModels.nmri98;
-        this.profileChart.data.datasets[7].data = zoomedHistory.map(h => 
+        this.profileChart.data.datasets[6].hidden = !this.enabledModels.nmri98;
+        this.profileChart.data.datasets[6].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.ceiling : 0
         );
         
@@ -2414,27 +2305,22 @@ class DiveSimulator {
             h.models.vval18 ? h.models.vval18.risk : 0
         );
         
-        // RGBM risk over time - Dataset 4
-        this.riskChart.data.datasets[4].hidden = !this.enabledModels.rgbm;
-        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
-            h.models.rgbm ? h.models.rgbm.risk : 0
-        );
         
         // TBDM risk over time - Dataset 5
-        this.riskChart.data.datasets[5].hidden = !this.enabledModels.tbdm;
-        this.riskChart.data.datasets[5].data = zoomedHistory.map(h => 
+        this.riskChart.data.datasets[4].hidden = !this.enabledModels.tbdm;
+        this.riskChart.data.datasets[4].data = zoomedHistory.map(h => 
             h.models.tbdm ? h.models.tbdm.risk : 0
         );
         
         // NMRI98 risk over time - Dataset 6
-        this.riskChart.data.datasets[6].hidden = !this.enabledModels.nmri98;
-        this.riskChart.data.datasets[6].data = zoomedHistory.map(h => 
+        this.riskChart.data.datasets[5].hidden = !this.enabledModels.nmri98;
+        this.riskChart.data.datasets[5].data = zoomedHistory.map(h => 
             h.models.nmri98 ? h.models.nmri98.risk : 0
         );
         
         // Hills risk over time - Dataset 7
-        this.riskChart.data.datasets[7].hidden = !this.enabledModels.hills;
-        this.riskChart.data.datasets[7].data = zoomedHistory.map(h => 
+        this.riskChart.data.datasets[6].hidden = !this.enabledModels.hills;
+        this.riskChart.data.datasets[6].data = zoomedHistory.map(h => 
             h.models.hills ? h.models.hills.risk : 0
         );
         
@@ -2565,7 +2451,6 @@ class DiveSimulator {
                 vpmb: 16,
                 bvm: 3,
                 vval18: 3,
-                rgbm: 16,
                 tbdm: 16,
                 nmri98: 3,
                 hills: 16
@@ -2615,7 +2500,6 @@ class DiveSimulator {
             vpmb: 'VPM-B',
             bvm: 'BVM(3)',
             vval18: 'VVal-18 Thalmann',
-            rgbm: 'RGBM (folded)',
             tbdm: 'TBDM',
             nmri98: 'NMRI98 LEM',
             hills: 'Thermodynamic (Hills)'
