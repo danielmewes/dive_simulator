@@ -533,7 +533,7 @@ export class BuhlmannModel extends DecompressionModel {
   /**
    * Override to update Buhlmann-specific state after tissue loading changes
    */
-  protected postProcessTissueState(): void {
+  protected override postProcessTissueState(): void {
     // Ensure buhlmannCompartments array is properly synchronized with tissueCompartments
     if (this.buhlmannCompartments.length !== this.tissueCompartments.length) {
       // Re-sync the arrays by clearing and rebuilding buhlmannCompartments
