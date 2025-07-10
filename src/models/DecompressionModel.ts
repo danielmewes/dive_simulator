@@ -166,19 +166,13 @@ export abstract class DecompressionModel {
 
   /**
    * Calculate minimum stop time using binary search (following Subsurface reference implementation)
+   * This method works on copies to avoid modifying the actual tissue compartments
    * @param stopDepth Depth at which to calculate stop time
    * @param nextDepth Next depth to ascend to (or 0 for surface)
    * @param maxTime Maximum time to search (default: 120 minutes)
    * @returns Minimum stop time in minutes
    */
   protected calculateMinimumStopTime(stopDepth: number, nextDepth: number, maxTime: number = 120): number {
-    // Save current state
-    const savedCompartments = this.tissueCompartments.map(c => ({
-      ...c,
-      nitrogenLoading: c.nitrogenLoading,
-      heliumLoading: c.heliumLoading
-    }));
-    
     // Binary search for minimum time
     let minTime = 0;
     let maxTestTime = maxTime;
@@ -187,22 +181,10 @@ export abstract class DecompressionModel {
     while (maxTestTime - minTime > 0.1) { // 0.1 minute precision
       const testTime = (minTime + maxTestTime) / 2;
       
-      // Restore state
-      this.tissueCompartments.forEach((c, i) => {
-        c.nitrogenLoading = savedCompartments[i]!.nitrogenLoading;
-        c.heliumLoading = savedCompartments[i]!.heliumLoading;
-      });
+      // Test if this stop time allows safe ascent by simulating on copies
+      const isSafe = this.simulateStopTime(stopDepth, nextDepth, testTime);
       
-      // Update dive state to stop depth
-      this.updateDiveState({ depth: stopDepth });
-      
-      // Simulate time at stop depth
-      this.updateTissueLoadings(testTime);
-      
-      // Test if ascent to next depth is safe
-      const tolerance = this.calculateTissueTolerance(nextDepth, true);
-      
-      if (tolerance !== null) {
+      if (isSafe) {
         // Safe to ascend after this time
         maxTestTime = testTime;
         bestTime = testTime;
@@ -212,13 +194,87 @@ export abstract class DecompressionModel {
       }
     }
     
-    // Restore original state
-    this.tissueCompartments.forEach((c, i) => {
-      c.nitrogenLoading = savedCompartments[i]!.nitrogenLoading;
-      c.heliumLoading = savedCompartments[i]!.heliumLoading;
+    return Math.max(1, Math.ceil(bestTime)); // Minimum 1 minute
+  }
+
+  /**
+   * Simulate staying at a stop depth for a given time and test if ascent is safe
+   * This method works on copies and does not modify the actual tissue compartments
+   * @param stopDepth Depth to simulate stop at
+   * @param nextDepth Depth to test ascent to
+   * @param stopTime Time to spend at stop depth
+   * @returns True if ascent is safe after the stop time
+   */
+  private simulateStopTime(stopDepth: number, nextDepth: number, stopTime: number): boolean {
+    // Create copies of current tissue loadings
+    const testCompartments = this.tissueCompartments.map(c => ({
+      nitrogenLoading: c.nitrogenLoading,
+      heliumLoading: c.heliumLoading,
+      nitrogenHalfTime: c.nitrogenHalfTime,
+      heliumHalfTime: c.heliumHalfTime
+    }));
+    
+    // Calculate partial pressures at stop depth
+    const stopPressure = this.calculateAmbientPressure(stopDepth);
+    const nitrogenPP = this.currentDiveState.gasMix.nitrogen * stopPressure;
+    const heliumPP = this.currentDiveState.gasMix.helium * stopPressure;
+    
+    // Simulate tissue loading during stop time on the copies
+    testCompartments.forEach(compartment => {
+      compartment.nitrogenLoading = this.calculateHaldaneLoading(
+        compartment.nitrogenLoading,
+        nitrogenPP,
+        compartment.nitrogenHalfTime,
+        stopTime
+      );
+      
+      compartment.heliumLoading = this.calculateHaldaneLoading(
+        compartment.heliumLoading,
+        heliumPP,
+        compartment.heliumHalfTime,
+        stopTime
+      );
     });
     
-    return Math.max(1, Math.ceil(bestTime)); // Minimum 1 minute
+    // Test tissue tolerance at next depth using the simulated loadings
+    return this.testTissueToleranceWithCompartments(nextDepth, testCompartments);
+  }
+
+  /**
+   * Test tissue tolerance at a given depth using provided compartment loadings
+   * This is used for simulation without modifying actual tissue state
+   * @param depth Depth to test
+   * @param compartments Compartment loadings to test with
+   * @returns True if depth is safe for the given tissue loadings
+   */
+  private testTissueToleranceWithCompartments(
+    depth: number, 
+    compartments: Array<{nitrogenLoading: number, heliumLoading: number}>
+  ): boolean {
+    // Save current tissue state
+    const originalLoadings = this.tissueCompartments.map(c => ({
+      nitrogenLoading: c.nitrogenLoading,
+      heliumLoading: c.heliumLoading
+    }));
+    
+    try {
+      // Temporarily set tissue loadings to test values
+      this.tissueCompartments.forEach((c, i) => {
+        c.nitrogenLoading = compartments[i]!.nitrogenLoading;
+        c.heliumLoading = compartments[i]!.heliumLoading;
+      });
+      
+      // Test tolerance
+      const tolerance = this.calculateTissueTolerance(depth, true);
+      
+      return tolerance !== null;
+    } finally {
+      // Always restore original state
+      this.tissueCompartments.forEach((c, i) => {
+        c.nitrogenLoading = originalLoadings[i]!.nitrogenLoading;
+        c.heliumLoading = originalLoadings[i]!.heliumLoading;
+      });
+    }
   }
 
   /**
@@ -393,5 +449,39 @@ export abstract class DecompressionModel {
       gasMix: { oxygen: 0.21, helium: 0.0, get nitrogen() { return 1 - this.oxygen - this.helium; } },
       ambientPressure: this.surfacePressure
     };
+  }
+
+  /**
+   * Copy tissue state from another decompression model
+   * This method safely transfers tissue loadings while preserving object integrity
+   * @param sourceModel The model to copy tissue state from
+   */
+  public copyTissueStateFrom(sourceModel: DecompressionModel): void {
+    const sourceCompartments = sourceModel.getTissueCompartments();
+    
+    if (sourceCompartments && sourceCompartments.length === this.tissueCompartments.length) {
+      // First, set the current dive state to match the source
+      const sourceState = sourceModel.getDiveState();
+      this.updateDiveState(sourceState);
+      
+      // Then manually set tissue loadings after state is established
+      for (let i = 0; i < this.tissueCompartments.length; i++) {
+        this.tissueCompartments[i]!.nitrogenLoading = sourceCompartments[i]!.nitrogenLoading;
+        this.tissueCompartments[i]!.heliumLoading = sourceCompartments[i]!.heliumLoading;
+      }
+      
+      // Trigger any model-specific post-processing (like updating combined M-values)
+      // but with zero time step to avoid changing tissue loadings
+      this.postProcessTissueState();
+    }
+  }
+
+  /**
+   * Perform model-specific post-processing after tissue state changes
+   * Override in derived classes as needed
+   */
+  protected postProcessTissueState(): void {
+    // Base implementation does nothing
+    // Derived classes can override to update model-specific state
   }
 }

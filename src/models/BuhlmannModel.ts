@@ -107,6 +107,11 @@ export class BuhlmannModel extends DecompressionModel {
   protected initializeTissueCompartments(): void {
     this.tissueCompartments = [];
     this.buhlmannCompartments = [];
+    
+    // Ensure buhlmannCompartments is initialized even if it was undefined
+    if (!this.buhlmannCompartments) {
+      this.buhlmannCompartments = [];
+    }
 
     // Use hardcoded arrays to avoid initialization issues
     const nitrogenTimes = [
@@ -523,5 +528,24 @@ export class BuhlmannModel extends DecompressionModel {
     const riskPercentage = Math.min(100, maxSupersaturationRatio * maxSupersaturationRatio * 50);
     
     return Math.round(riskPercentage * 10) / 10; // Round to 1 decimal place
+  }
+
+  /**
+   * Override to update Buhlmann-specific state after tissue loading changes
+   */
+  protected postProcessTissueState(): void {
+    // Ensure buhlmannCompartments array is properly synchronized with tissueCompartments
+    if (this.buhlmannCompartments.length !== this.tissueCompartments.length) {
+      // Re-sync the arrays by clearing and rebuilding buhlmannCompartments
+      this.buhlmannCompartments = [];
+      for (let i = 0; i < this.tissueCompartments.length; i++) {
+        this.buhlmannCompartments.push(this.tissueCompartments[i] as BuhlmannCompartment);
+      }
+    }
+    
+    // Update combined M-values for all compartments after tissue state is copied
+    for (const compartment of this.buhlmannCompartments) {
+      this.updateCombinedMValues(compartment);
+    }
   }
 }
