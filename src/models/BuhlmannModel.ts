@@ -211,7 +211,7 @@ export class BuhlmannModel extends DecompressionModel {
   }
 
   public calculateCeiling(): number {
-    // Calculate first stop depth if not already done (for consistent gradient factor calculations)
+    // Ensure first stop depth is calculated for gradient factor consistency
     if (this.firstStopDepth <= 0) {
       this.firstStopDepth = this.calculateFirstStopDepth();
     }
@@ -559,7 +559,7 @@ export class BuhlmannModel extends DecompressionModel {
       this.updateCombinedMValues(compartment);
     }
     
-    // Invalidate firstStopDepth when tissue loadings change to ensure gradient factor consistency
+    // Reset firstStopDepth to maintain gradient factor consistency
     this.firstStopDepth = 0;
   }
 }
