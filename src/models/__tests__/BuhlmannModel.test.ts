@@ -538,8 +538,8 @@ describe('BuhlmannModel', () => {
       // The ceiling should be a reasonable value, not an error fallback
       expect(ceiling).not.toBe(200);
       
-      // The ceiling should be less than or equal to current depth (40m)
-      expect(ceiling).toBeLessThanOrEqual(40);
+      // The ceiling should be strictly less than current depth (40m)
+      expect(ceiling).toBeLessThan(40);
       
       // For staying at 40m for 5 minutes, expect a shallow decompression ceiling
       expect(ceiling).toBeGreaterThanOrEqual(0);
@@ -571,9 +571,9 @@ describe('BuhlmannModel', () => {
       // The ceiling should be a reasonable value, not an error fallback
       expect(ceiling).not.toBe(200);
       
-      // The ceiling should be a reasonable value (between 0 and 40m)
+      // The ceiling should be a reasonable value (between 0 and less than 40m)
       expect(ceiling).toBeGreaterThanOrEqual(0);
-      expect(ceiling).toBeLessThanOrEqual(40);
+      expect(ceiling).toBeLessThan(40);
       
       // Should require decompression
       expect(buhlmannModel.canAscendDirectly()).toBe(false);

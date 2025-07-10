@@ -143,51 +143,26 @@ export abstract class DecompressionModel {
    * @returns Ceiling depth in meters
    */
   protected calculateCeilingIterative(stepSize: number = 0.3): number {
-    // Start from current depth (or reasonable maximum) and work upward toward surface
-    const currentDepth = this.currentDiveState.depth;
-    const maxSearchDepth = Math.max(currentDepth, 100); // Search from current depth or 100m, whichever is deeper
+    // Start from surface and work downward to find the shallowest safe depth
+    let testDepth = 0;
+    const maxDepth = 200; // Reasonable maximum depth for safety
     
-    let testDepth = maxSearchDepth;
-    
-    // Work from deeper to shallower to find the shallowest safe depth
-    while (testDepth >= 0) {
+    while (testDepth <= maxDepth) {
       // Test if this depth is safe
       const tolerance = this.calculateTissueTolerance(testDepth, true);
       
       if (tolerance !== null) {
-        // This depth is safe, but continue upward to find shallowest safe depth
-        let ceiling = testDepth;
-        
-        // Continue checking shallower depths
-        testDepth -= stepSize;
-        while (testDepth >= 0) {
-          const shallowerTolerance = this.calculateTissueTolerance(testDepth, true);
-          if (shallowerTolerance !== null) {
-            ceiling = testDepth;
-            testDepth -= stepSize;
-          } else {
-            // Found the ceiling - return the last safe depth
-            return Math.max(0, ceiling);
-          }
-        }
-        
-        // If we made it to surface, ceiling is 0
-        return 0;
+        // Found the shallowest safe depth (ceiling)
+        return testDepth;
       }
       
-      // Not safe at this depth, try deeper
+      // Not safe at this shallow depth, try deeper
       testDepth += stepSize;
-      
-      // Safety check to prevent infinite loop
-      if (testDepth > maxSearchDepth + 100) {
-        // If we can't find a safe depth within reasonable limits,
-        // return current depth as a conservative estimate
-        return currentDepth;
-      }
     }
     
-    // If no safe depth found (which should be very rare), return surface
-    return 0;
+    // If we get here, tissue loading is extremely high
+    // Return a conservative deep ceiling rather than the full maxDepth
+    return Math.min(maxDepth, this.currentDiveState.depth);
   }
 
   /**
