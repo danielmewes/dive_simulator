@@ -560,7 +560,7 @@ export class VpmBModel extends DecompressionModel {
       toleranceLimit = 0.0;
       
       // Find the most restrictive compartment
-      for (let i = 0; i < this.vpmBCompartments.length; i++) {
+      for (let i = 0; i < Math.min(this.vpmBCompartments.length, 16); i++) {
         const compartment = this.vpmBCompartments[i];
         if (!compartment) continue; // Skip undefined compartments
         
@@ -643,11 +643,13 @@ export class VpmBModel extends DecompressionModel {
   }
 
   /**
-   * Initialize VPM-B gradients (placeholder for proper implementation)
+   * Initialize VPM-B gradients
+   * Currently implemented as a no-op since gradients are calculated on-demand
+   * per compartment in calculateVpmBGradient()
    */
   private initializeVpmBGradients(): void {
-    // For now, this is a placeholder. In a full implementation, this would
-    // initialize bottom gradients for each compartment based on the dive profile
+    // Current implementation calculates gradients on-demand for each compartment
+    // during ceiling calculation rather than pre-computing them
   }
 
   /**
