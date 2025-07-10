@@ -27,7 +27,7 @@ describe('VpmBModel', () => {
     });
 
     test('should have correct model name', () => {
-      expect(vpmModel.getModelName()).toBe('VPM-B+3 (eff. GF 30/85)');
+      expect(vpmModel.getModelName()).toBe('VPM-B+3');
     });
   });
 
@@ -205,9 +205,9 @@ describe('VpmBModel', () => {
       const moderate = new VpmBModel(3);
       const liberal = new VpmBModel(0);
 
-      expect(conservative.getModelName()).toBe('VPM-B+5 (eff. GF 30/85)');
-      expect(moderate.getModelName()).toBe('VPM-B+3 (eff. GF 30/85)');
-      expect(liberal.getModelName()).toBe('VPM-B+0 (eff. GF 30/85)');
+      expect(conservative.getModelName()).toBe('VPM-B+5');
+      expect(moderate.getModelName()).toBe('VPM-B+3');
+      expect(liberal.getModelName()).toBe('VPM-B+0');
     });
   });
 

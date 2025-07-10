@@ -58,7 +58,6 @@ export class VpmBModel extends DecompressionModel {
   private vpmBCompartments!: VpmBCompartment[];
   private bubbleParameters!: BubbleParameters;
   private conservatismLevel!: number; // 0-5, where 0 is least conservative
-  private effectiveGradientFactors!: { low: number; high: number }; // Calculated effective GF values
 
   // VPM-B specific constants (from Subsurface reference implementation)
   private readonly WATER_VAPOR_PRESSURE = 0.0627; // bar at 37°C
@@ -91,9 +90,6 @@ export class VpmBModel extends DecompressionModel {
       criticalVolumeLambda: 750.0,
       regenerationTimeConstant: 20160.0 // 14 days in minutes
     };
-
-    // Initialize effective gradient factors (will be calculated during decompression)
-    this.effectiveGradientFactors = { low: 30, high: 85 };
 
     // Re-initialize compartments now that all properties are set
     this.initializeTissueCompartments();
@@ -230,68 +226,9 @@ export class VpmBModel extends DecompressionModel {
   }
 
   public getModelName(): string {
-    return `VPM-B+${this.conservatismLevel} (eff. GF ${this.effectiveGradientFactors.low}/${this.effectiveGradientFactors.high})`;
+    return `VPM-B+${this.conservatismLevel}`;
   }
 
-  /**
-   * Calculate effective gradient factors from VPM-B bubble mechanics
-   * This converts VPM-B allowable supersaturation to equivalent Buhlmann gradient factors
-   */
-  public calculateEffectiveGradientFactors(): { low: number; high: number } {
-    // Calculate effective gradient factors by comparing VPM-B allowable supersaturation 
-    // to equivalent Buhlmann M-values
-    
-    let effectiveGFLow = 100;
-    let effectiveGFHigh = 100;
-    
-    // Test at various depths to find equivalent gradient factors
-    const testDepths = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30]; // Common stop depths
-    
-    for (const depth of testDepths) {
-      const ambientPressure = this.calculateAmbientPressure(depth);
-      
-      for (const compartment of this.vpmBCompartments) {
-        const totalLoading = compartment.nitrogenLoading + compartment.heliumLoading;
-        const vpmBAllowableSupersaturation = this.calculateAllowableSupersaturation(compartment);
-        
-        // Calculate equivalent Buhlmann M-value at this depth
-        // Using approximation: M = a * P + b (using first compartment as reference)
-        const mValueA = 1.2599; // First compartment nitrogen M-value a
-        const mValueB = 0.5050; // First compartment nitrogen M-value b
-        const fullMValue = mValueA * ambientPressure + mValueB;
-        
-        // Calculate what gradient factor would give equivalent allowable supersaturation
-        // GF = (allowable - ambient) / (M-value - ambient)
-        const vpmBAllowablePressure = ambientPressure + vpmBAllowableSupersaturation;
-        const equivalentGF = ((vpmBAllowablePressure - ambientPressure) / (fullMValue - ambientPressure)) * 100;
-        
-        // Update effective gradient factors
-        if (depth >= 18) { // Deep stops - use for GF low
-          effectiveGFLow = Math.min(effectiveGFLow, equivalentGF);
-        } else { // Shallow stops - use for GF high
-          effectiveGFHigh = Math.min(effectiveGFHigh, equivalentGF);
-        }
-      }
-    }
-    
-    // Ensure reasonable bounds
-    effectiveGFLow = Math.max(10, Math.min(100, effectiveGFLow));
-    effectiveGFHigh = Math.max(effectiveGFLow, Math.min(100, effectiveGFHigh));
-    
-    this.effectiveGradientFactors = { 
-      low: Math.round(effectiveGFLow), 
-      high: Math.round(effectiveGFHigh) 
-    };
-    
-    return this.effectiveGradientFactors;
-  }
-
-  /**
-   * Get the current effective gradient factors
-   */
-  public getEffectiveGradientFactors(): { low: number; high: number } {
-    return { ...this.effectiveGradientFactors };
-  }
 
   /**
    * Calculate the number of microbubbles for a given compartment
