@@ -137,7 +137,7 @@ export abstract class DecompressionModel {
   public abstract calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null;
 
   /**
-   * Calculate ceiling depth iteratively (corrected implementation)
+   * Calculate ceiling depth iteratively
    * This method tests depths progressively to find the minimum safe depth
    * @param stepSize Step size for iteration in meters (default: 0.3m)
    * @returns Ceiling depth in meters
