@@ -512,7 +512,7 @@ describe('BuhlmannModel', () => {
     });
   });
 
-  describe('Ceiling Calculation Bug Fix', () => {
+  describe('Ceiling Calculation Edge Cases', () => {
     test('should not return 200m ceiling when staying at 40m for 5 minutes', () => {
       const airMix: GasMix = { 
         oxygen: 0.21, 
