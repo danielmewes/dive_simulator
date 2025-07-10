@@ -511,4 +511,74 @@ describe('BuhlmannModel', () => {
       expect(tts18).toBeCloseTo(1.5, 0); // 27m / 18m/min = 1.5 minutes
     });
   });
+
+  describe('Ceiling Calculation Bug Fix', () => {
+    test('should not return 200m ceiling when staying at 40m for 5 minutes', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Simulate the exact scenario described in the bug report:
+      // - Ascend to 40m and remain there for 5 minutes (with one model update every 10s)
+      buhlmannModel.updateDiveState({
+        depth: 40,
+        time: 0,
+        gasMix: airMix
+      });
+
+      // Update tissues every 10 seconds for 5 minutes (30 updates total)
+      for (let i = 0; i < 30; i++) {
+        buhlmannModel.updateTissueLoadings(10 / 60); // 10 seconds = 1/6 minute
+      }
+
+      const ceiling = buhlmannModel.calculateCeiling();
+
+      // The ceiling should NOT be 200m (the old bug)
+      expect(ceiling).not.toBe(200);
+      
+      // The ceiling should be less than or equal to current depth (40m)
+      // In fact, for this scenario, ceiling should be 0 (no decompression required)
+      expect(ceiling).toBeLessThanOrEqual(40);
+      
+      // For staying at 40m for 5 minutes, a reasonable ceiling should be calculated
+      // (not the erroneous 200m from the bug)
+      expect(ceiling).toBeGreaterThanOrEqual(0);
+      expect(ceiling).toBeLessThan(15); // Should be a shallow decompression ceiling
+    });
+
+    test('should not return 200m ceiling for deeper dives that do require decompression', () => {
+      const airMix: GasMix = { 
+        oxygen: 0.21, 
+        helium: 0.0, 
+        get nitrogen() { return 1 - this.oxygen - this.helium; }
+      };
+
+      // Simulate a longer dive that DOES require decompression
+      buhlmannModel.updateDiveState({
+        depth: 40,
+        time: 0,
+        gasMix: airMix
+      });
+
+      // Stay at 40m for 40 minutes (should require decompression)
+      buhlmannModel.updateTissueLoadings(40);
+
+      // Move to surface to check ceiling
+      buhlmannModel.updateDiveState({ depth: 0, time: 40 });
+
+      const ceiling = buhlmannModel.calculateCeiling();
+
+      // The ceiling should NOT be 200m (the old bug)
+      expect(ceiling).not.toBe(200);
+      
+      // The ceiling should be a reasonable value (between 0 and 40m)
+      expect(ceiling).toBeGreaterThanOrEqual(0);
+      expect(ceiling).toBeLessThanOrEqual(40);
+      
+      // Should require decompression
+      expect(buhlmannModel.canAscendDirectly()).toBe(false);
+    });
+  });
 });

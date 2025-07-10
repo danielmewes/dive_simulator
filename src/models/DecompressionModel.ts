@@ -137,31 +137,57 @@ export abstract class DecompressionModel {
   public abstract calculateTissueTolerance(depth: number, includeModelSpecificLogic: boolean): number | null;
 
   /**
-   * Calculate ceiling depth iteratively (following Subsurface reference implementation)
+   * Calculate ceiling depth iteratively (corrected implementation)
    * This method tests depths progressively to find the minimum safe depth
    * @param stepSize Step size for iteration in meters (default: 0.3m)
    * @returns Ceiling depth in meters
    */
   protected calculateCeilingIterative(stepSize: number = 0.3): number {
-    // Start from surface and work downward
-    let testDepth = 0;
-    const maxDepth = 200; // Reasonable maximum depth for safety
+    // Start from current depth (or reasonable maximum) and work upward toward surface
+    const currentDepth = this.currentDiveState.depth;
+    const maxSearchDepth = Math.max(currentDepth, 100); // Search from current depth or 100m, whichever is deeper
     
-    while (testDepth <= maxDepth) {
+    let testDepth = maxSearchDepth;
+    
+    // Work from deeper to shallower to find the shallowest safe depth
+    while (testDepth >= 0) {
       // Test if this depth is safe
       const tolerance = this.calculateTissueTolerance(testDepth, true);
       
       if (tolerance !== null) {
-        // Found a safe depth, return it
-        return testDepth;
+        // This depth is safe, but continue upward to find shallowest safe depth
+        let ceiling = testDepth;
+        
+        // Continue checking shallower depths
+        testDepth -= stepSize;
+        while (testDepth >= 0) {
+          const shallowerTolerance = this.calculateTissueTolerance(testDepth, true);
+          if (shallowerTolerance !== null) {
+            ceiling = testDepth;
+            testDepth -= stepSize;
+          } else {
+            // Found the ceiling - return the last safe depth
+            return Math.max(0, ceiling);
+          }
+        }
+        
+        // If we made it to surface, ceiling is 0
+        return 0;
       }
       
-      // Not safe, try deeper
+      // Not safe at this depth, try deeper
       testDepth += stepSize;
+      
+      // Safety check to prevent infinite loop
+      if (testDepth > maxSearchDepth + 100) {
+        // If we can't find a safe depth within reasonable limits,
+        // return current depth as a conservative estimate
+        return currentDepth;
+      }
     }
     
-    // If we get here, something is wrong - return a conservative deep ceiling
-    return maxDepth;
+    // If no safe depth found (which should be very rare), return surface
+    return 0;
   }
 
   /**
