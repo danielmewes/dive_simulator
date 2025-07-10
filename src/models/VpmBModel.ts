@@ -387,7 +387,9 @@ export class VpmBModel extends DecompressionModel {
     const criticalRadius = Math.max(compartment.adjustedCriticalRadius || baseCriticalRadius, 0.001); // Prevent division by zero
     
     // Basic VPM-B supersaturation limit from surface tension
-    const bubblePressure = (2.0 * surfaceTension) / criticalRadius;
+    // Convert critical radius from microns to meters for proper units
+    const criticalRadiusMeters = criticalRadius * 1e-6; // microns to meters
+    const bubblePressure = (2.0 * surfaceTension) / criticalRadiusMeters;
     
     // Account for crushing pressure effects on bubble formation
     const crushingPressureEffect = Math.max(0, 
@@ -416,8 +418,11 @@ export class VpmBModel extends DecompressionModel {
     const surfaceTension = this.bubbleParameters.surfaceTension;
     const safeCriticalRadius = Math.max(criticalRadius, 0.001); // Prevent division by zero
     
+    // Convert critical radius from microns to meters for proper units
+    const criticalRadiusMeters = safeCriticalRadius * 1e-6;
+    
     // Simplified bubble radius calculation
-    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / safeCriticalRadius);
+    const pressureRatio = excessPressure / ((2.0 * surfaceTension) / criticalRadiusMeters);
     return safeCriticalRadius * Math.pow(Math.max(pressureRatio, 0.001), 1.0 / 3.0);
   }
 
@@ -516,15 +521,15 @@ export class VpmBModel extends DecompressionModel {
       if (includeModelSpecificLogic) {
         // Apply VPM-B bubble mechanics
         const allowableSupersaturation = this.calculateAllowableSupersaturation(compartment);
-        allowablePressure = totalLoading - allowableSupersaturation;
+        // Maximum pressure this tissue can handle = ambient + allowable supersaturation
+        allowablePressure = ambientPressure + allowableSupersaturation;
       } else {
-        // Use basic limit without bubble mechanics  
-        allowablePressure = totalLoading;
+        // Use basic limit without bubble mechanics (no supersaturation allowed)
+        allowablePressure = ambientPressure;
       }
       
-      // If the allowable pressure for this compartment is greater than ambient pressure,
-      // this depth is unsafe for this compartment
-      if (allowablePressure > ambientPressure) {
+      // If current tissue loading exceeds what's allowable at this depth, it's unsafe
+      if (totalLoading > allowablePressure) {
         return null; // Unsafe depth
       }
     }

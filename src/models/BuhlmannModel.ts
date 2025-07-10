@@ -509,13 +509,12 @@ export class BuhlmannModel extends DecompressionModel {
       // Calculate M-value at current depth
       const mValue = compartment.combinedMValueA * ambientPressure + compartment.combinedMValueB;
       
-      // Apply gradient factors
+      // Apply gradient factors correctly
       const effectiveGradientFactor = this.getGradientFactorAtDepth(this.currentDiveState.depth);
-      const allowableSupersaturation = mValue * (effectiveGradientFactor / 100);
+      const allowablePressure = ambientPressure + (effectiveGradientFactor / 100) * (mValue - ambientPressure);
       
       // Calculate supersaturation ratio
-      const supersaturation = Math.max(0, totalLoading - ambientPressure);
-      const supersaturationRatio = supersaturation / allowableSupersaturation;
+      const supersaturationRatio = totalLoading / allowablePressure;
       
       maxSupersaturationRatio = Math.max(maxSupersaturationRatio, supersaturationRatio);
     }
